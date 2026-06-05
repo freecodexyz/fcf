@@ -3,8 +3,16 @@
 pragma solidity ^0.8.24;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract RIK is ERC721 {
+contract RIK is ERC721, Ownable {
+    using ECDSA for bytes32;
+    using MessageHashUtils for bytes32;
+
+    address public attester;
+
     struct Repo {
         uint64 githubRepoId; // == tokenId -> kept for clarity
         uint64 githubOwnerId;
@@ -17,11 +25,25 @@ contract RIK is ERC721 {
 
     mapping(uint256 => Repo) private _repos;
 
+    // errors
     error AlreadyRegistered(uint256 repoId);
+    error BadAttestation();
 
-    constructor() ERC721("Repository Identity Key", "RIK") {}
+    constructor(address initialOwner, address initialAttester)
+        ERC721("Repository Identity Key", "RIK")
+        Ownable(initialOwner)
+    {
+        attester = initialAttester;
+    }
 
-    function register(uint256 repoId, uint64 githubOwnerId) external {
+    function setAttester(address a) external onlyOwner {
+        attester = a;
+    }
+
+    function register(uint256 repoId, uint64 githubOwnerId, bytes calldata attestation) external {
+        bytes32 digest = keccak256(abi.encode(repoId, githubOwnerId, msg.sender)).toEthSignedMessageHash();
+        if (digest.recover(attestation) != attester) revert BadAttestation();
+
         // prevent double registration
         if (_ownerOf(repoId) != address(0)) revert AlreadyRegistered(repoId);
 

@@ -4,13 +4,24 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {RIK} from "../src/RIK.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract RIK_T is Test {
+    using MessageHashUtils for bytes32;
+
     RIK rik;
     address deployer = address(this);
+    uint256 attester_private_key = 123;
+    address attester = vm.addr(attester_private_key);
 
     function setUp() public {
-        rik = new RIK();
+        rik = new RIK(deployer, attester);
+    }
+
+    function attest(uint256 repo_id, uint64 github_owner_id, address registrant) internal view returns (bytes memory) {
+        bytes32 digest = keccak256(abi.encode(repo_id, github_owner_id, registrant)).toEthSignedMessageHash();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(attester_private_key, digest);
+        return abi.encodePacked(r, s, v);
     }
 
     function test_NameAndSymbol() public view {
@@ -22,7 +33,7 @@ contract RIK_T is Test {
         uint256 repo_id = 11112;
         uint64 owner_github_id = 11111;
 
-        rik.register(repo_id, owner_github_id);
+        rik.register(repo_id, owner_github_id, attest(repo_id, owner_github_id, address(this)));
         assertEq(rik.ownerOf(repo_id), address(this));
     }
 
@@ -37,9 +48,9 @@ contract RIK_T is Test {
         uint64 bob_github_id = 999;
 
         vm.prank(alice);
-        rik.register(repo_id_one, alice_github_id);
+        rik.register(repo_id_one, alice_github_id, attest(repo_id_one, alice_github_id, alice));
         vm.prank(bob);
-        rik.register(repo_id_two, bob_github_id);
+        rik.register(repo_id_two, bob_github_id, attest(repo_id_two, bob_github_id, bob));
 
         assertEq(rik.ownerOf(repo_id_one), alice);
         assertEq(rik.ownerOf(repo_id_two), bob);
@@ -49,9 +60,9 @@ contract RIK_T is Test {
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
 
-        rik.register(repo_id, github_owner_id);
+        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
         vm.expectRevert(abi.encodeWithSelector(RIK.AlreadyRegistered.selector, repo_id));
-        rik.register(repo_id, github_owner_id);
+        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
     }
 
     function test_EmitsRepoRegistered() public {
@@ -62,7 +73,7 @@ contract RIK_T is Test {
         vm.expectEmit(true, true, false, true);
 
         emit RIK.RepoRegistered(repo_id, address(this), github_owner_id, 1_700_000_000);
-        rik.register(repo_id, github_owner_id);
+        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
     }
 
     function test_TokenIdOfIsIdentity() public view {
@@ -86,8 +97,17 @@ contract RIK_T is Test {
         uint64 github_owner_id = 999;
 
         // register -> get repo struct -> check registrant
-        rik.register(repo_id, github_owner_id);
+        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
         RIK.Repo memory r = rik.repoOf(repo_id);
         assertEq(r.registrant, address(this));
+    }
+
+    function test_RejectsUsignedRegister() public {
+        uint256 repo_id = 11112;
+        uint64 github_owner_id = 999;
+
+        vm.expectRevert(RIK.BadAttestation.selector);
+
+        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(0xB0B)));
     }
 }
