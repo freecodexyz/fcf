@@ -20,6 +20,8 @@ export function importAbi(): Abi {
     if (!checkPathExists(abiPath)) throw Error("ABI JSON file not found");
 
     const raw: string = readFileSync(abiPath, { encoding: "utf-8" });
-    const abi: Abi = [JSON.parse(raw)] as const;
-    return abi;
+    const artifact = JSON.parse(raw) as { abi?: unknown };
+    if (!Array.isArray(artifact.abi)) throw Error("ABI JSON file does not contain an abi array");
+
+    return artifact.abi as Abi;
 }
