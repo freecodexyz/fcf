@@ -6,11 +6,11 @@ on:
   push:
     paths:
       - "contracts/**"
-      - ".github/workflows/test.yml"
+      - ".github/workflows/test-contracts.yml"
   pull_request:
     paths:
       - "contracts/**"
-      - ".github/workflows/test.yml"
+      - ".github/workflows/test-contracts.yml"
   workflow_dispatch:
 
 defaults:
