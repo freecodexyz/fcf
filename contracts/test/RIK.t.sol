@@ -1,5 +1,5 @@
 // test/RIK_1.t.sol
-// SPDX-License-Identifier: Apache-2.0 
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
@@ -36,8 +36,10 @@ contract RIK_T is Test {
         uint64 alice_github_id = 998;
         uint64 bob_github_id = 999;
 
-        vm.prank(alice); rik.register(repo_id_one, alice_github_id);
-        vm.prank(bob); rik.register(repo_id_two, bob_github_id);
+        vm.prank(alice);
+        rik.register(repo_id_one, alice_github_id);
+        vm.prank(bob);
+        rik.register(repo_id_two, bob_github_id);
 
         assertEq(rik.ownerOf(repo_id_one), alice);
         assertEq(rik.ownerOf(repo_id_two), bob);
@@ -48,9 +50,7 @@ contract RIK_T is Test {
         uint64 github_owner_id = 999;
 
         rik.register(repo_id, github_owner_id);
-        vm.expectRevert(
-            abi.encodeWithSelector(RIK.AlreadyRegistered.selector, repo_id)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RIK.AlreadyRegistered.selector, repo_id));
         rik.register(repo_id, github_owner_id);
     }
 
@@ -64,5 +64,4 @@ contract RIK_T is Test {
         emit RIK.RepoRegistered(repo_id, address(this), github_owner_id, 1_700_000_000);
         rik.register(repo_id, github_owner_id);
     }
-
 }
