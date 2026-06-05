@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { createWalletClient, createPublicClient, http } from "viem";
+import { createWalletClient, createPublicClient, http, parseAbiItem } from "viem";
 import type { Abi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, foundry } from "viem/chains";
@@ -21,6 +21,10 @@ try {
     console.error(`${COMMAND_NAME}: ${error}; exiting.`)
     exit(1);
 }
+
+const RepoRegisteredEvent = parseAbiItem(
+    "event RepoRegistered(uint256 indexed repoId, address indexed registrant, uint64 githubOwnerId, uint64 registeredAt)"
+);
 
 const program = new Command();
 
@@ -59,6 +63,28 @@ program
         });
         const r = await publicC.waitForTransactionReceipt({ hash });
         console.log(`registered: ${hash} status=${r.status}`);
-    })
+    });
+
+program
+    .command("list")
+    // needs to be removed in prod or be a default
+    .requiredOption("--contract <addr>", "deployed RIK address")
+    .option("--from-block <n>", "starting block", "0")
+    .action(async (opts) => {
+        const { publicC } = clients();
+        const logs = await publicC.getLogs({
+            address: opts.contract as `0x${string}`,
+            event: RepoRegisteredEvent,
+            fromBlock: BigInt(opts.fromBlock),
+            toBlock: "latest",
+        });
+        
+        for (const l of logs) {
+            const { repoId, registrant, githubOwnerId, registeredAt} = l.args;
+            console.log(
+                `repo=${repoId} ownerId=${githubOwnerId} registrant=${registrant} at=${registeredAt}`
+            );
+        }
+    });
 
 program.parseAsync(process.argv);
