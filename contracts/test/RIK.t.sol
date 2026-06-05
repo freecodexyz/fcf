@@ -64,4 +64,30 @@ contract RIK_T is Test {
         emit RIK.RepoRegistered(repo_id, address(this), github_owner_id, 1_700_000_000);
         rik.register(repo_id, github_owner_id);
     }
+
+    function test_TokenIdOfIsIdentity() public view {
+        uint256 repo_id = 11112;
+
+        // pass-through
+        // forge-lint: disable-next-line(unsafe-typecast)
+        assertEq(rik.tokenIdOf(uint64(repo_id)), repo_id);
+    }
+
+    function test_RepoRevertsForUnregistered() public {
+        uint256 repo_id = 11112;
+
+        vm.expectRevert(bytes("not registered"));
+
+        rik.repoOf(repo_id);
+    }
+
+    function test_RepoOfReturnsStruct() public {
+        uint256 repo_id = 11112;
+        uint64 github_owner_id = 999;
+
+        // register -> get repo struct -> check registrant
+        rik.register(repo_id, github_owner_id);
+        RIK.Repo memory r = rik.repoOf(repo_id);
+        assertEq(r.registrant, address(this));
+    }
 }

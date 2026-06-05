@@ -39,4 +39,13 @@ contract RIK is ERC721 {
 
         _mint(msg.sender, repoId);
     }
+
+    function tokenIdOf(uint64 githubRepoId) external pure returns (uint256) {
+        return uint256(githubRepoId);
+    }
+
+    function repoOf(uint256 tokenId) external view returns (Repo memory) {
+        require(_ownerOf(tokenId) != address(0), "not registered");
+        return _repos[tokenId];
+    }
 }
