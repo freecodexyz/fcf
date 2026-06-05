@@ -6,20 +6,25 @@ import { sepolia, foundry } from "viem/chains";
 import { importAbi } from "@/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
 import { exit } from "node:process";
+import { parseJwt } from "./oidc.js";
 
 const COMMAND_NAME = "fcf";
 const COMMAND_DESCRIPTION = "FCF CLI tool."
 const VERSION = packageJson?.version || "v0.0.1";
+
+function die(err: any): never {
+    let error = "unknown error";
+    if (err instanceof Error) error = err.message;
+    console.error(`${COMMAND_NAME}: ${error}; exiting.`)
+    exit(1);
+}
 
 // import abi -> created by forge build
 let abi: Abi | null = null;
 try {
     abi = importAbi();
 } catch (err) {
-    let error = "unknown error";
-    if (err instanceof Error) error = err.message;
-    console.error(`${COMMAND_NAME}: ${error}; exiting.`)
-    exit(1);
+    die(err);
 }
 
 const RepoRegisteredEvent = parseAbiItem(
@@ -48,17 +53,32 @@ function clients() {
 
 program
     .command("register")
-    .requiredOption("--repo-id <n>", "GitHub repository_id")
-    .requiredOption("--owner-id <n>", "GitHub owner numeric id")
+    .requiredOption("--oidcToken <token>", "GitHub's OIDC repository token")
     // needs to be removed in prod or be a default
     .requiredOption("--contract <addr>", "deployed RIK address")
     .action(async (opts) => {
         const { wallet, publicC, account } = clients();
+
+        const jwt = (() => {
+            try {
+                return parseJwt(opts.oidcToken);
+            } catch(err) {
+                die(err);
+            }
+        })();
+
+        const expectedAud = account.address.toLowerCase();
+        if (jwt.payload.aud?.toLowerCase() !== expectedAud) {
+            die(new Error(`aud mismatch: want ${expectedAud}, got ${jwt.payload.aud}`));
+        }
+        const repoId = BigInt(jwt.payload.repository_id);
+        const ownerId = BigInt(jwt.payload.repository_owner_id);
+
         const hash = await wallet.writeContract({
             address: opts.contract as `0x${string}`,
             abi,
             functionName: "register",
-            args: [BigInt(opts.repoId), BigInt(opts.ownerId)],
+            args: [repoId, ownerId],
             account,
         });
         const r = await publicC.waitForTransactionReceipt({ hash });
