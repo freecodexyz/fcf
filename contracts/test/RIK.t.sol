@@ -32,6 +32,25 @@ contract RIK_T is Test {
         inputs[1] = "test/fixtures/load-fixture.mjs";
         inputs[2] = string.concat("test/fixtures/", name);
 
+        f = _loadFixture(inputs);
+    }
+
+    function _loadFixture(string memory name, uint256 repo_id, uint64 owner_id, address recipient)
+        internal
+        returns (Fixture memory f)
+    {
+        string[] memory inputs = new string[](6);
+        inputs[0] = "node";
+        inputs[1] = "test/fixtures/load-fixture.mjs";
+        inputs[2] = string.concat("test/fixtures/", name);
+        inputs[3] = vm.toString(repo_id);
+        inputs[4] = vm.toString(uint256(owner_id));
+        inputs[5] = vm.toString(recipient);
+
+        f = _loadFixture(inputs);
+    }
+
+    function _loadFixture(string[] memory inputs) internal returns (Fixture memory f) {
         string memory json = string(vm.ffi(inputs));
         f.kid = vm.parseJsonBytes32(json, ".kid");
         f.headerB64 = bytes(vm.parseJsonString(json, ".headerB64"));
@@ -59,9 +78,9 @@ contract RIK_T is Test {
     }
 
     function test_RegisterArbitraryId() public {
-        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 owner_github_id = 11111;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, owner_github_id, address(this));
 
         _addKey(f);
         _register(f, repo_id, owner_github_id);
@@ -69,7 +88,6 @@ contract RIK_T is Test {
     }
 
     function test_TwoUsersTwoRepos() public {
-        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id_one = 11112;
         uint256 repo_id_two = 11113;
 
@@ -78,22 +96,24 @@ contract RIK_T is Test {
 
         uint64 alice_github_id = 998;
         uint64 bob_github_id = 999;
+        Fixture memory alice_f = _loadFixture("sample-jwt.json", repo_id_one, alice_github_id, alice);
+        Fixture memory bob_f = _loadFixture("sample-jwt.json", repo_id_two, bob_github_id, bob);
 
-        _addKey(f);
+        _addKey(alice_f);
 
         vm.prank(alice);
-        _register(f, repo_id_one, alice_github_id);
+        _register(alice_f, repo_id_one, alice_github_id);
         vm.prank(bob);
-        _register(f, repo_id_two, bob_github_id);
+        _register(bob_f, repo_id_two, bob_github_id);
 
         assertEq(rik.ownerOf(repo_id_one), alice);
         assertEq(rik.ownerOf(repo_id_two), bob);
     }
 
     function test_RejectsDuplicate() public {
-        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
 
         _addKey(f);
         _register(f, repo_id, github_owner_id);
@@ -102,9 +122,9 @@ contract RIK_T is Test {
     }
 
     function test_EmitsRepoRegistered() public {
-        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
 
         _addKey(f);
         vm.warp(1_700_000_000);
@@ -131,9 +151,9 @@ contract RIK_T is Test {
     }
 
     function test_RepoOfReturnsStruct() public {
-        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
 
         // register -> get repo struct -> check registrant
         _addKey(f);

@@ -5,6 +5,9 @@ pragma solidity ^0.8.24;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {RSA} from "@openzeppelin/contracts/utils/cryptography/RSA.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {JsonClaim} from "./JsonClaim.sol";
 
 contract RIK is ERC721, Ownable {
     using RSA for bytes32;
@@ -60,6 +63,13 @@ contract RIK is ERC721, Ownable {
         uint64 githubOwnerId
     ) external {
         _verifyJwt(kid, headerB64, payloadB64, signature);
+
+        bytes memory payload = bytes(Base64.decode(string(payloadB64)));
+
+        // verify payload contains the right claim
+        JsonClaim.requireStringClaim(payload, "aud", Strings.toHexString(uint160(msg.sender), 20));
+        JsonClaim.requireStringClaim(payload, "repository_id", Strings.toString(repoId));
+        JsonClaim.requireStringClaim(payload, "repository_owner_id", Strings.toString(uint256(githubOwnerId)));
 
         // prevent double registration
         if (_ownerOf(repoId) != address(0)) revert AlreadyRegistered(repoId);
