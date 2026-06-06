@@ -16,6 +16,7 @@ const COMMAND_DESCRIPTION = "FCF CLI tool."
 const VERSION = packageJson?.version || "v0.0.1";
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
 const REGISTER_WORKFLOW_PATH = ".github/workflows/fcf-register.yml";
+const DEFAULT_LIST_BLOCK_RANGE = 50_000n;
 const REGISTER_WORKFLOW = `name: Register Repository
 
 on:
@@ -193,9 +194,13 @@ program
     .command("list")
     // needs to be removed in prod or be a default
     .requiredOption("--contract <addr>", "deployed RIK address")
-    .option("--from-block <n>", "starting block", "0")
+    .option("--from-block <n>", "starting block")
     .action(async (opts) => {
         const { publicC } = clients();
+
+        // by default looks only in the last DEFAULT_LIST_BLOCK_RANGE blocks
+        if (!opts.fromBlock) opts.fromBlock = await publicC.getBlockNumber() - DEFAULT_LIST_BLOCK_RANGE;
+
         const logs = await publicC.getLogs({
             address: opts.contract as `0x${string}`,
             event: RepoRegisteredEvent,
