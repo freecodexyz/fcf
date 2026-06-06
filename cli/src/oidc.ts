@@ -27,3 +27,20 @@ export function parseJwt(jwt: string): JwtParts {
     const payload = JSON.parse(b64urlDecode(payloadB64).toString("utf-8"));
     return { headerB64, payloadB64, signatureB64, header, payload };
 }
+
+export async function requestGithubOidcToken(audience: string): Promise<string> {
+    const requestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+    const requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+    if (!requestUrl || !requestToken) throw new Error("GitHub OIDC env vars not found");
+
+    const separator = requestUrl.includes("?") ? "&" : "?";
+    // include aud in payload -> aud == eth address of signer
+    const res = await fetch(`${requestUrl}${separator}audience=${encodeURIComponent(audience)}`, {
+        headers: { authorization: `bearer ${requestToken}` },
+    });
+    if (!res.ok) throw new Error(`failed to fetch GitHub OIDC token: ${res.status}`);
+
+    const body = await res.json() as { value?: string };
+    if (!body.value) throw new Error("GitHub OIDC response did not contain token");
+    return body.value;
+}
