@@ -23,5 +23,5 @@ jobs:
           RPC_URL: ${{ vars.FCF_RPC_URL }}
           FCF_CONTRACT: ${{ vars.FCF_CONTRACT }}
         run: |
-          npm exec --yes --package=@freecodexyz/cli@latest -- fcf register \
+          npm exec --yes --package=@freecodexyz/cli@alpha -- fcf register \
             --contract "$FCF_CONTRACT"
