@@ -103,16 +103,20 @@ if [[ -z "$PRIVATE_KEY" ]]; then
   exit 1
 fi
 
+OWNER_ADDRESS="$(cast wallet address --private-key "$PRIVATE_KEY")"
+
 printf 'RPC URL: %s\n' "$RPC_URL"
 printf 'Foundry root: %s\n' "$FOUNDRY_ROOT"
 printf 'Deployer private key: %s\n' "$PRIVATE_KEY"
+printf 'Owner address: %s\n' "$OWNER_ADDRESS"
 
 if ! DEPLOY_OUTPUT="$(forge create \
   --root "$FOUNDRY_ROOT" \
   --broadcast \
   --rpc-url "$RPC_URL" \
   --private-key "$PRIVATE_KEY" \
-  "$CONTRACT_PATH_IDENTIFIER" 2>&1)"; then
+  "$CONTRACT_PATH_IDENTIFIER" \
+  --constructor-args "$OWNER_ADDRESS" 2>&1)"; then
   printf '%s\n' "$DEPLOY_OUTPUT" >&2
   exit 1
 fi
