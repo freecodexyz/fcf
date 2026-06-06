@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { b64urlToHex, jwtKid, parseJwt } from "@/oidc.js";
+import { b64urlToHex, jwtKid, parseJwt } from "@/github/oidc.js";
 
 test("parses GitHub OIDC payload", () => {
     // real (but expired) token

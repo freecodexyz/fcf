@@ -9,9 +9,9 @@ import { createPublicClient, createWalletClient, http, parseAbiItem, toHex } fro
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry, sepolia } from "viem/chains";
 
-import { importAbi } from "@/importAbi.js";
+import { importAbi } from "@/utils/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
-import { b64urlToHex, jwtKid, parseJwt, requestGithubOidcToken } from "@/oidc.js";
+import { b64urlToHex, jwtKid, parseJwt, requestGithubOidcToken } from "@/github/oidc.js";
 
 const COMMAND_NAME = "fcf";
 const COMMAND_DESCRIPTION = "FCF CLI tool.";

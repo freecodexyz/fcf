@@ -1,7 +1,7 @@
 import { accessSync, constants, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Abi } from "viem";
-import staticAbi from "./abi/RIK.json" with { type: "json" };
+import staticAbi from "../abi/RIK.json" with { type: "json" };
 
 const CONTRACT_NAME = "RIK";
 const ABI_PATH = fileURLToPath(new URL(`../../contracts/out/${CONTRACT_NAME}.sol/${CONTRACT_NAME}.json`, import.meta.url));
