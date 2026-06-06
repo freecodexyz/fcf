@@ -211,4 +211,17 @@ contract RIK_T is Test {
 
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }
+
+    function test_RejectsWrongRepoId() public {
+        uint256 repo_id = 11112;
+        uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
+
+        _addKey(f);
+
+        vm.prank(f.recipient);
+        vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMismatch.selector, "repository_id"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId + 1, f.ownerId);
+    }
 }
