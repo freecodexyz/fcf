@@ -18,7 +18,7 @@ function checkPathExists(path: string): boolean {
 }
 
 export function importAbi(): Abi {
-    if (process.env.DEV == "true") return staticAbi as Abi;
+    if (!process.env.SKIP_STATIC_ABI) return staticAbi as Abi;
     if (!checkPathExists(ABI_PATH)) throw Error("ABI JSON file not found");
 
     const raw: string = readFileSync(ABI_PATH, { encoding: "utf-8" });
