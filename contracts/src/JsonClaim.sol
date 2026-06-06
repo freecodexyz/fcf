@@ -2,10 +2,10 @@
 // SDPX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
-error ClaimMissing(string claim);
-error ClaimMismatch(string claim);
-
 library JsonClaim {
+    error ClaimMissing(string claim);
+    error ClaimMismatch(string claim);
+
     // find first occurrence of "needle" in "hay"; returns -1 if not found
     function indexOf(bytes memory hay, bytes memory needle) internal pure returns (int256) {
         if (needle.length == 0 || hay.length < needle.length) return -1;
@@ -29,6 +29,11 @@ library JsonClaim {
     // assert the bytes for `"<key>":"<expectedValue>"` are present in payload
     function requireStringClaim(bytes memory payload, string memory key, string memory expectedValue) internal pure {
         bytes memory needle = abi.encodePacked('"', bytes(key), '":"', bytes(expectedValue), '"');
-        if (indexOf(payload, needle) < 0) revert ClaimMissing(key);
+        if (indexOf(payload, needle) >= 0) return;
+
+        bytes memory claim = abi.encodePacked('"', bytes(key), '":');
+        if (indexOf(payload, claim) < 0) revert ClaimMissing(key);
+
+        revert ClaimMismatch(key);
     }
 }
