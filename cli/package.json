@@ -6,9 +6,19 @@
   "bin": {
     "fcf": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "src/abi/RIK.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
+    "abi": "forge build --root ../contracts && node scripts/generate-abi.mjs",
     "build": "tsup src/index.ts --format esm --dts --clean",
+    "version:minor": "node scripts/bump-minor.mjs",
+    "prepublishOnly": "pnpm version:minor && pnpm abi && pnpm test && pnpm typecheck && pnpm build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

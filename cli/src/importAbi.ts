@@ -1,14 +1,16 @@
 import { accessSync, constants, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Abi } from "viem";
+import staticAbi from "./abi/RIK.json" with { type: "json" };
 
 const CONTRACT_NAME = "RIK";
+const ABI_PATH = fileURLToPath(new URL(`../../contracts/out/${CONTRACT_NAME}.sol/${CONTRACT_NAME}.json`, import.meta.url));
 
 function checkPathExists(path: string): boolean {
   if (!path.trim()) return false;
 
   try {
-    accessSync(resolve(path), constants.F_OK);
+    accessSync(path, constants.F_OK);
     return true;
   } catch {
     return false;
@@ -16,10 +18,10 @@ function checkPathExists(path: string): boolean {
 }
 
 export function importAbi(): Abi {
-    const abiPath = `../contracts/out/${CONTRACT_NAME}.sol/${CONTRACT_NAME}.json`;
-    if (!checkPathExists(abiPath)) throw Error("ABI JSON file not found");
+    if (process.env.DEV == "true") return staticAbi as Abi;
+    if (!checkPathExists(ABI_PATH)) throw Error("ABI JSON file not found");
 
-    const raw: string = readFileSync(abiPath, { encoding: "utf-8" });
+    const raw: string = readFileSync(ABI_PATH, { encoding: "utf-8" });
     const artifact = JSON.parse(raw) as { abi?: unknown };
     if (!Array.isArray(artifact.abi)) throw Error("ABI JSON file does not contain an abi array");
 
