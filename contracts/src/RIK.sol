@@ -12,8 +12,6 @@ import {JsonClaim} from "./JsonClaim.sol";
 contract RIK is ERC721, Ownable {
     using RSA for bytes32;
 
-    address public attester;
-
     struct RSAKey {
         bytes modulus;
         bytes exponent;
@@ -47,16 +45,7 @@ contract RIK is ERC721, Ownable {
     // NOTE: make it so contract owner can update this
     string public constant EXPECTED_ISS = "https://token.actions.githubusercontent.com";
 
-    constructor(address initialOwner, address initialAttester)
-        ERC721("Repository Identity Key", "RIK")
-        Ownable(initialOwner)
-    {
-        attester = initialAttester;
-    }
-
-    function setAttester(address a) external onlyOwner {
-        attester = a;
-    }
+    constructor(address initialOwner) ERC721("Repository Identity Key", "RIK") Ownable(initialOwner) {}
 
     function register(
         bytes32 kid,

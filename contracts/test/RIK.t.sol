@@ -9,7 +9,6 @@ import {JsonClaim} from "../src/JsonClaim.sol";
 contract RIK_T is Test {
     RIK rik;
     address deployer = address(this);
-    address attester = address(0xA77E57);
 
     struct Fixture {
         bytes32 kid;
@@ -26,7 +25,7 @@ contract RIK_T is Test {
     }
 
     function setUp() public {
-        rik = new RIK(deployer, attester);
+        rik = new RIK(deployer);
     }
 
     function _loadFixture(string memory name) internal returns (Fixture memory f) {
