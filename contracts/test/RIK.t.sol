@@ -4,24 +4,53 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {RIK} from "../src/RIK.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract RIK_T is Test {
-    using MessageHashUtils for bytes32;
-
     RIK rik;
     address deployer = address(this);
-    uint256 attester_private_key = 123;
-    address attester = vm.addr(attester_private_key);
+    address attester = address(0xA77E57);
+
+    struct Fixture {
+        bytes32 kid;
+        bytes headerB64;
+        bytes payloadB64;
+        bytes signature;
+        bytes modulus;
+        bytes exponent;
+        uint256 repoId;
+        uint64 ownerId;
+        address recipient;
+    }
 
     function setUp() public {
         rik = new RIK(deployer, attester);
     }
 
-    function attest(uint256 repo_id, uint64 github_owner_id, address registrant) internal view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encode(repo_id, github_owner_id, registrant)).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(attester_private_key, digest);
-        return abi.encodePacked(r, s, v);
+    function _loadFixture(string memory name) internal returns (Fixture memory f) {
+        string[] memory inputs = new string[](3);
+        inputs[0] = "node";
+        inputs[1] = "test/fixtures/load-fixture.mjs";
+        inputs[2] = string.concat("test/fixtures/", name);
+
+        string memory json = string(vm.ffi(inputs));
+        f.kid = vm.parseJsonBytes32(json, ".kid");
+        f.headerB64 = bytes(vm.parseJsonString(json, ".headerB64"));
+        f.payloadB64 = bytes(vm.parseJsonString(json, ".payloadB64"));
+        f.signature = vm.parseJsonBytes(json, ".signature");
+        f.modulus = vm.parseJsonBytes(json, ".modulus");
+        f.exponent = vm.parseJsonBytes(json, ".exponent");
+        f.repoId = vm.parseJsonUint(json, ".repoId");
+        // forge-lint: disable-next-line(unsafe-typecast)
+        f.ownerId = uint64(vm.parseJsonUint(json, ".ownerId"));
+        f.recipient = vm.parseJsonAddress(json, ".recipient");
+    }
+
+    function _addKey(Fixture memory f) internal {
+        rik.addKey(f.kid, f.modulus, f.exponent);
+    }
+
+    function _register(Fixture memory f, uint256 repo_id, uint64 github_owner_id) internal {
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, repo_id, github_owner_id);
     }
 
     function test_NameAndSymbol() public view {
@@ -30,14 +59,17 @@ contract RIK_T is Test {
     }
 
     function test_RegisterArbitraryId() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 owner_github_id = 11111;
 
-        rik.register(repo_id, owner_github_id, attest(repo_id, owner_github_id, address(this)));
+        _addKey(f);
+        _register(f, repo_id, owner_github_id);
         assertEq(rik.ownerOf(repo_id), address(this));
     }
 
     function test_TwoUsersTwoRepos() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id_one = 11112;
         uint256 repo_id_two = 11113;
 
@@ -47,33 +79,39 @@ contract RIK_T is Test {
         uint64 alice_github_id = 998;
         uint64 bob_github_id = 999;
 
+        _addKey(f);
+
         vm.prank(alice);
-        rik.register(repo_id_one, alice_github_id, attest(repo_id_one, alice_github_id, alice));
+        _register(f, repo_id_one, alice_github_id);
         vm.prank(bob);
-        rik.register(repo_id_two, bob_github_id, attest(repo_id_two, bob_github_id, bob));
+        _register(f, repo_id_two, bob_github_id);
 
         assertEq(rik.ownerOf(repo_id_one), alice);
         assertEq(rik.ownerOf(repo_id_two), bob);
     }
 
     function test_RejectsDuplicate() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
 
-        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
+        _addKey(f);
+        _register(f, repo_id, github_owner_id);
         vm.expectRevert(abi.encodeWithSelector(RIK.AlreadyRegistered.selector, repo_id));
-        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
+        _register(f, repo_id, github_owner_id);
     }
 
     function test_EmitsRepoRegistered() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
 
+        _addKey(f);
         vm.warp(1_700_000_000);
         vm.expectEmit(true, true, false, true);
 
         emit RIK.RepoRegistered(repo_id, address(this), github_owner_id, 1_700_000_000);
-        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
+        _register(f, repo_id, github_owner_id);
     }
 
     function test_TokenIdOfIsIdentity() public view {
@@ -93,21 +131,50 @@ contract RIK_T is Test {
     }
 
     function test_RepoOfReturnsStruct() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
 
         // register -> get repo struct -> check registrant
-        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(this)));
+        _addKey(f);
+        _register(f, repo_id, github_owner_id);
         RIK.Repo memory r = rik.repoOf(repo_id);
         assertEq(r.registrant, address(this));
     }
 
-    function test_RejectsUsignedRegister() public {
-        uint256 repo_id = 11112;
-        uint64 github_owner_id = 999;
+    function test_VerifyWithAddedKey() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
+        _addKey(f);
 
-        vm.expectRevert(RIK.BadAttestation.selector);
+        vm.prank(f.recipient);
 
-        rik.register(repo_id, github_owner_id, attest(repo_id, github_owner_id, address(0xB0B)));
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
+
+        assertEq(rik.ownerOf(f.repoId), f.recipient);
+    }
+
+    function test_RejectsUnknownKid() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
+        // forge-lint: disable-next-line(unsafe-typecast)
+        bytes32 wrongKid = bytes32("kid-zzz");
+
+        vm.prank(f.recipient);
+
+        vm.expectRevert(abi.encodeWithSelector(RIK.UnknownKid.selector, wrongKid));
+
+        rik.register(wrongKid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
+    }
+
+    function test_RejectsRevokedKid() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
+
+        _addKey(f);
+        rik.revokeKey(f.kid);
+
+        vm.prank(f.recipient);
+
+        vm.expectRevert(abi.encodeWithSelector(RIK.UnknownKid.selector, f.kid));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }
 }

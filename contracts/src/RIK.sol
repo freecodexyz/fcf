@@ -4,14 +4,24 @@ pragma solidity ^0.8.24;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {RSA} from "@openzeppelin/contracts/utils/cryptography/RSA.sol";
 
 contract RIK is ERC721, Ownable {
-    using ECDSA for bytes32;
-    using MessageHashUtils for bytes32;
+    using RSA for bytes32;
 
     address public attester;
+
+    struct RSAKey {
+        bytes modulus;
+        bytes exponent;
+        bool active;
+    }
+
+    event KeyAdded(bytes32 indexed kid);
+    event KeyRevoked(bytes32 indexed kid);
+
+    // store valid signing keys from GitHub -> they periodically rotate
+    mapping(bytes32 => RSAKey) private _keys;
 
     struct Repo {
         uint64 githubRepoId; // == tokenId -> kept for clarity
@@ -27,7 +37,8 @@ contract RIK is ERC721, Ownable {
 
     // errors
     error AlreadyRegistered(uint256 repoId);
-    error BadAttestation();
+    error UnknownKid(bytes32 kid);
+    error BadJwt();
 
     constructor(address initialOwner, address initialAttester)
         ERC721("Repository Identity Key", "RIK")
@@ -40,9 +51,15 @@ contract RIK is ERC721, Ownable {
         attester = a;
     }
 
-    function register(uint256 repoId, uint64 githubOwnerId, bytes calldata attestation) external {
-        bytes32 digest = keccak256(abi.encode(repoId, githubOwnerId, msg.sender)).toEthSignedMessageHash();
-        if (digest.recover(attestation) != attester) revert BadAttestation();
+    function register(
+        bytes32 kid,
+        bytes calldata headerB64,
+        bytes calldata payloadB64,
+        bytes calldata signature,
+        uint256 repoId,
+        uint64 githubOwnerId
+    ) external {
+        _verifyJwt(kid, headerB64, payloadB64, signature);
 
         // prevent double registration
         if (_ownerOf(repoId) != address(0)) revert AlreadyRegistered(repoId);
@@ -69,5 +86,29 @@ contract RIK is ERC721, Ownable {
     function repoOf(uint256 tokenId) external view returns (Repo memory) {
         require(_ownerOf(tokenId) != address(0), "not registered");
         return _repos[tokenId];
+    }
+
+    function addKey(bytes32 kid, bytes calldata n, bytes calldata e) external onlyOwner {
+        _keys[kid] = RSAKey({modulus: n, exponent: e, active: true});
+        emit KeyAdded(kid);
+    }
+
+    function revokeKey(bytes32 kid) external onlyOwner {
+        _keys[kid].active = false;
+        emit KeyRevoked(kid);
+    }
+
+    function _verifyJwt(bytes32 kid, bytes calldata headerB64, bytes calldata payloadB64, bytes calldata signature)
+        internal
+        view
+    {
+        // verify a jwt with a specific kid is active
+        RSAKey memory k = _keys[kid];
+        if (!k.active) revert UnknownKid(kid);
+
+        // verify it's a valid jwt
+        bytes memory signingInput = bytes.concat(headerB64, ".", payloadB64);
+        bytes32 digest = sha256(signingInput);
+        if (!RSA.pkcs1Sha256(digest, signature, k.exponent, k.modulus)) revert BadJwt();
     }
 }
