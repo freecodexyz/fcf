@@ -8,7 +8,8 @@
   },
   "files": [
     "dist",
-    "src/abi/RIK.json"
+    "src/abi/RIK.json",
+    "templates"
   ],
   "publishConfig": {
     "access": "public"

@@ -59,7 +59,8 @@ release path. They mutate `cli/package.json`.
   by the CLI `init` command.
 - `local-rpc.sh`: root helper that starts Anvil, deploys a contract, prints the
   RPC URL/private key/owner/contract address, and waits until interrupted.
-- `cli/src/index.ts`: Commander CLI entrypoint and workflow template.
+- `cli/src/index.ts`: Commander CLI entrypoint.
+- `cli/templates/fcf-register.yml`: workflow template emitted by CLI `init`.
 - `cli/src/oidc.ts`: JWT base64url helpers, parsing, and GitHub `kid` hashing.
 - `cli/src/importAbi.ts`: loads the committed static ABI by default.
 - `cli/src/abi/RIK.json`: committed generated ABI used by the published CLI.
@@ -97,7 +98,7 @@ release path. They mutate `cli/package.json`.
   JWT payloads.
 - `cli/src/importAbi.ts` defaults to the committed static ABI. `SKIP_STATIC_ABI`
   switches to the Foundry artifact path for local development.
-- Keep `cli/src/index.ts`'s `REGISTER_WORKFLOW` template and
+- Keep `cli/templates/fcf-register.yml` and
   `.github/workflows/fcf-register.yml` behavior in sync when registration
   workflow semantics change.
 - Contract ABI changes must be followed by `cd cli && pnpm abi` so the packaged

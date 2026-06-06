@@ -7,7 +7,7 @@ import { sepolia, foundry } from "viem/chains";
 import { importAbi } from "@/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
 import { exit } from "node:process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { b64urlToHex, jwtKid, parseJwt } from "./oidc.js";
 
@@ -16,35 +16,8 @@ const COMMAND_DESCRIPTION = "FCF CLI tool."
 const VERSION = packageJson?.version || "v0.0.1";
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
 const REGISTER_WORKFLOW_PATH = ".github/workflows/fcf-register.yml";
+const REGISTER_WORKFLOW_TEMPLATE_PATH = new URL("../templates/fcf-register.yml", import.meta.url);
 const DEFAULT_LIST_BLOCK_RANGE = 50_000n;
-const REGISTER_WORKFLOW = `name: Register Repository
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  id-token: write
-
-jobs:
-  register:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Register repository
-        env:
-          PRIVATE_KEY: \${{ secrets.FCF_PRIVATE_KEY }}
-          RPC_URL: \${{ vars.FCF_RPC_URL }}
-          FCF_CONTRACT: \${{ vars.FCF_CONTRACT }}
-        run: |
-          npm exec --yes --package=@freecodexyz/cli@alpha -- fcf register \\
-            --contract "$FCF_CONTRACT"
-`;
 
 function die(err: any): never {
     let error = "unknown error";
@@ -116,8 +89,15 @@ program
             die(new Error(`${REGISTER_WORKFLOW_PATH} already exists`));
         }
 
+        let registerWorkflow: string;
+        try {
+            registerWorkflow = readFileSync(REGISTER_WORKFLOW_TEMPLATE_PATH, "utf8");
+        } catch (err) {
+            die(err);
+        }
+
         mkdirSync(dirname(REGISTER_WORKFLOW_PATH), { recursive: true });
-        writeFileSync(REGISTER_WORKFLOW_PATH, REGISTER_WORKFLOW);
+        writeFileSync(REGISTER_WORKFLOW_PATH, registerWorkflow);
         console.log(`created: ${REGISTER_WORKFLOW_PATH}`);
     });
 
