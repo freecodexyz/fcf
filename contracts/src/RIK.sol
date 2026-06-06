@@ -43,6 +43,10 @@ contract RIK is ERC721, Ownable {
     error UnknownKid(bytes32 kid);
     error BadJwt();
 
+    // pin trusted issuer
+    // NOTE: make it so contract owner can update this
+    string public constant EXPECTED_ISS = "https://token.actions.githubusercontent.com";
+
     constructor(address initialOwner, address initialAttester)
         ERC721("Repository Identity Key", "RIK")
         Ownable(initialOwner)
@@ -70,6 +74,9 @@ contract RIK is ERC721, Ownable {
         JsonClaim.requireStringClaim(payload, "aud", Strings.toHexString(uint160(msg.sender), 20));
         JsonClaim.requireStringClaim(payload, "repository_id", Strings.toString(repoId));
         JsonClaim.requireStringClaim(payload, "repository_owner_id", Strings.toString(uint256(githubOwnerId)));
+
+        // verify issuer
+        JsonClaim.requireStringClaim(payload, "iss", EXPECTED_ISS);
 
         // verify if JWT is expired
         (uint256 exp_, bool fe) = _readUintClaim(payload, "exp");

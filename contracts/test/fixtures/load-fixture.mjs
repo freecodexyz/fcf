@@ -46,6 +46,7 @@ const fixture = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const repoId = process.argv[3] ?? fixture.repoId;
 const ownerId = process.argv[4] ?? fixture.ownerId;
 const recipient = (process.argv[5] ?? fixture.recipient).toLowerCase();
+const iss = fixture.iss ?? "https://token.actions.githubusercontent.com";
 const exp = fixture.exp ?? 4102444800;
 const nbf = fixture.nbf ?? 0;
 const kid = fixture.kid ?? bytes32Ascii(fixture.kidText);
@@ -56,6 +57,7 @@ const publicJwk = createPublicKey(privateKey).export({ format: "jwk" });
 
 const headerB64 = b64url({ alg: "RS256", typ: "JWT", kid: kidText });
 const payloadB64 = b64url({
+  iss,
   aud: recipient,
   repository_id: String(repoId),
   repository_owner_id: String(ownerId),
@@ -72,6 +74,7 @@ const output = JSON.stringify({
   modulus: b64urlToHex(publicJwk.n),
   exponent: b64urlToHex(publicJwk.e),
   recipient,
+  iss,
   repoId: Number(repoId),
   ownerId: Number(ownerId),
   exp,
