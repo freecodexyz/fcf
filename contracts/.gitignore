@@ -19,3 +19,7 @@ docs/
 .env.*
 !.env.example
 
+.dev-wallet-data
+
+# Deploy artifacts
+broadcast/
