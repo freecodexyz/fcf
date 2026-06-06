@@ -46,6 +46,8 @@ const fixture = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const repoId = process.argv[3] ?? fixture.repoId;
 const ownerId = process.argv[4] ?? fixture.ownerId;
 const recipient = (process.argv[5] ?? fixture.recipient).toLowerCase();
+const exp = fixture.exp ?? 4102444800;
+const nbf = fixture.nbf ?? 0;
 const kid = fixture.kid ?? bytes32Ascii(fixture.kidText);
 const kidText = fixture.kidText ?? "kid-001";
 
@@ -57,6 +59,8 @@ const payloadB64 = b64url({
   aud: recipient,
   repository_id: String(repoId),
   repository_owner_id: String(ownerId),
+  exp,
+  nbf,
 });
 const signature = sign("RSA-SHA256", Buffer.from(`${headerB64}.${payloadB64}`), privateKey);
 
@@ -70,6 +74,8 @@ const output = JSON.stringify({
   recipient,
   repoId: Number(repoId),
   ownerId: Number(ownerId),
+  exp,
+  nbf,
 });
 
 process.stdout.write(`0x${Buffer.from(output).toString("hex")}`);

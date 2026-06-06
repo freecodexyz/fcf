@@ -21,6 +21,8 @@ contract RIK_T is Test {
         uint256 repoId;
         uint64 ownerId;
         address recipient;
+        uint256 exp;
+        uint256 nbf;
     }
 
     function setUp() public {
@@ -63,6 +65,8 @@ contract RIK_T is Test {
         // forge-lint: disable-next-line(unsafe-typecast)
         f.ownerId = uint64(vm.parseJsonUint(json, ".ownerId"));
         f.recipient = vm.parseJsonAddress(json, ".recipient");
+        f.exp = vm.parseJsonUint(json, ".exp");
+        f.nbf = vm.parseJsonUint(json, ".nbf");
     }
 
     function _addKey(Fixture memory f) internal {
@@ -223,5 +227,19 @@ contract RIK_T is Test {
         vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMismatch.selector, "repository_id"));
 
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId + 1, f.ownerId);
+    }
+
+    function test_RejectsExpired() public {
+        uint256 repo_id = 11112;
+        uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
+
+        _addKey(f);
+
+        vm.warp(f.exp + 1);
+        vm.prank(f.recipient);
+        vm.expectRevert(bytes("token expired"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }
 }

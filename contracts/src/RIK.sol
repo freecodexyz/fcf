@@ -71,6 +71,18 @@ contract RIK is ERC721, Ownable {
         JsonClaim.requireStringClaim(payload, "repository_id", Strings.toString(repoId));
         JsonClaim.requireStringClaim(payload, "repository_owner_id", Strings.toString(uint256(githubOwnerId)));
 
+        // verify if JWT is expired
+        (uint256 exp_, bool fe) = _readUintClaim(payload, "exp");
+        (uint256 nbf_, bool fn) = _readUintClaim(payload, "nbf");
+        if (!fe || !fn) revert JsonClaim.ClaimMissing("exp/nbf");
+        // JWT expiry must be checked against chain time; small validator timestamp drift is acceptable here.
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp > exp_) revert("token expired");
+
+        // JWT expiry must be checked against chain time; small validator timestamp drift is acceptable here.
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < nbf_) revert("token not yet valid");
+
         // prevent double registration
         if (_ownerOf(repoId) != address(0)) revert AlreadyRegistered(repoId);
 
@@ -120,5 +132,23 @@ contract RIK is ERC721, Ownable {
         bytes memory signingInput = bytes.concat(headerB64, ".", payloadB64);
         bytes32 digest = sha256(signingInput);
         if (!RSA.pkcs1Sha256(digest, signature, k.exponent, k.modulus)) revert BadJwt();
+    }
+
+    function _readUintClaim(bytes memory payload, string memory key) internal pure returns (uint256 value, bool found) {
+        bytes memory marker = abi.encodePacked('"', bytes(key), '":');
+        int256 pos = JsonClaim.indexOf(payload, marker);
+
+        if (pos < 0) return (0, false);
+
+        // casting to uint256 is safe because negative positions returned above.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint256 i = uint256(pos) + marker.length;
+        while (i < payload.length) {
+            uint8 c = uint8(payload[i]);
+            if (c < 0x30 || c > 0x39) break; // -> not a digit
+            value = value * 10 + (c - 0x30);
+            ++i;
+        }
+        found = true;
     }
 }
