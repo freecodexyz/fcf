@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Command } from "commander";
 import { createWalletClient, createPublicClient, http, parseAbiItem, toHex } from "viem";
 import type { Abi } from "viem";
