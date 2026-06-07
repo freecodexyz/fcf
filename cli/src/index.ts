@@ -13,6 +13,8 @@ import { importAbi } from "@/utils/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
 import { b64urlToHex, jwtKid, parseJwt, requestGithubOidcToken } from "@/github/oidc.js";
 import { getOctokit } from "./github/auth.js";
+import { getRepoSecretMetadata, setRepoSecret } from "./github/secrets.js";
+import { getRepoVariableMetadata, setRepoVariable } from "./github/vars.js";
 
 const COMMAND_NAME = "fcf";
 const COMMAND_DESCRIPTION = "FCF CLI tool.";
@@ -39,7 +41,10 @@ function buildProgram(): Command {
     addRegisterCommand(program);
     addKeysSyncCommand(program);
     addListCommand(program);
-    addGithubCommand(program);
+    const githubCommand = program.command("github");
+    addGithubWhoamiCommand(githubCommand);
+    addGithubSecretsCommand(githubCommand);
+    addGithubVarsCommand(githubCommand);
 
     return program;
 }
@@ -160,15 +165,74 @@ function addListCommand(program: Command): void {
         });
 }
 
-function addGithubCommand(program: Command): void {
+function addGithubWhoamiCommand(program: Command): void {
     program
-        .command("github")
         .command("whoami")
         .action(async (_) => {
             let octokit;
             let data;
             try { octokit = await getOctokit(); data = (await octokit.request("GET /user")).data; } catch (err) { die(err); }
             if (!data.login) die("No GitHub login data found"); else console.log(`user=${data.login}   profile=${data.html_url}`);
+        })
+}
+
+function addGithubSecretsCommand(program: Command): void {
+    const secretsCommand = program.command("secrets");
+
+    secretsCommand
+        .command("get")
+        .argument("<secret_name>", "repository secret name")
+        .action(async (secretName: string) => {
+            let octokit;
+            let data;
+            try {
+                octokit = await getOctokit();
+                data = await getRepoSecretMetadata(octokit, "fcf", "freecodexyz", secretName);
+                console.log(JSON.stringify(data, null, 2));
+            } catch (err) { die(err); }
+        });
+
+    secretsCommand
+        .command("set")
+        .argument("<secret_name>", "repository secret name")
+        .argument("<value>", "secret value")
+        .action(async (secretName: string, value: string) => {
+            let octokit;
+            try {
+                octokit = await getOctokit();
+                await setRepoSecret(octokit, "fcf", "freecodexyz", secretName, value);
+                console.log(`secret set: ${secretName}`);
+            } catch (err) { die(err); }
+        });
+}
+
+function addGithubVarsCommand(program: Command): void {
+    const varsCommand = program.command("vars");
+
+    varsCommand
+        .command("get")
+        .argument("<var_name>", "repository variable name")
+        .action(async (varName: string) => {
+            let octokit;
+            let data;
+            try {
+                octokit = await getOctokit();
+                data = await getRepoVariableMetadata(octokit, "fcf", "freecodexyz", varName);
+                console.log(JSON.stringify(data, null, 2));
+            } catch (err) { die(err); }
+        });
+
+    varsCommand
+        .command("set")
+        .argument("<var_name>", "repository variable name")
+        .argument("<value>", "variable value")
+        .action(async (varName: string, value: string) => {
+            let octokit;
+            try {
+                octokit = await getOctokit();
+                await setRepoVariable(octokit, "fcf", "freecodexyz", varName, value);
+                console.log(`variable set: ${varName}`);
+            } catch (err) { die(err); }
         });
 }
 
@@ -189,14 +253,6 @@ async function fetchJson(url: string): Promise<any> {
     const res = await fetch(url);
     if (!res.ok) die(new Error(`request failed: ${url} (${res.status})`));
     return res.json();
-}
-
-async function requestRequiredGithubOidcToken(audience: string): Promise<string> {
-    try {
-        return await requestGithubOidcToken(audience);
-    } catch (err) {
-        die(err);
-    }
 }
 
 function parseRequiredJwt(token: string): ReturnType<typeof parseJwt> {
