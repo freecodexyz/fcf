@@ -28,6 +28,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.24.0",
   "dependencies": {
+    "@octokit/core": "^7.0.6",
     "commander": "^15.0.0",
     "viem": "^2.52.2"
   },
