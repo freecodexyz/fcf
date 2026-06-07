@@ -13,6 +13,7 @@ import { importAbi } from "@/utils/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
 import { b64urlToHex, jwtKid, parseJwt, requestGithubOidcToken } from "@/github/oidc.js";
 import { getOctokit } from "./github/auth.js";
+import { getLocalGithubRepo } from "./github/repo.js";
 import { getRepoSecretMetadata, setRepoSecret } from "./github/secrets.js";
 import { getRepoVariableMetadata, setRepoVariable } from "./github/vars.js";
 
@@ -187,7 +188,8 @@ function addGithubSecretsCommand(program: Command): void {
             let data;
             try {
                 octokit = await getOctokit();
-                data = await getRepoSecretMetadata(octokit, "fcf", "freecodexyz", secretName);
+                const repo = await getLocalGithubRepo(octokit);
+                data = await getRepoSecretMetadata(octokit, repo.repoName, repo.repoOwnerName, secretName);
                 console.log(JSON.stringify(data, null, 2));
             } catch (err) { die(err); }
         });
@@ -200,7 +202,8 @@ function addGithubSecretsCommand(program: Command): void {
             let octokit;
             try {
                 octokit = await getOctokit();
-                await setRepoSecret(octokit, "fcf", "freecodexyz", secretName, value);
+                const repo = await getLocalGithubRepo(octokit);
+                await setRepoSecret(octokit, repo.repoName, repo.repoOwnerName, secretName, value);
                 console.log(`secret set: ${secretName}`);
             } catch (err) { die(err); }
         });
@@ -217,7 +220,8 @@ function addGithubVarsCommand(program: Command): void {
             let data;
             try {
                 octokit = await getOctokit();
-                data = await getRepoVariableMetadata(octokit, "fcf", "freecodexyz", varName);
+                const repo = await getLocalGithubRepo(octokit);
+                data = await getRepoVariableMetadata(octokit, repo.repoName, repo.repoOwnerName, varName);
                 console.log(JSON.stringify(data, null, 2));
             } catch (err) { die(err); }
         });
@@ -230,7 +234,8 @@ function addGithubVarsCommand(program: Command): void {
             let octokit;
             try {
                 octokit = await getOctokit();
-                await setRepoVariable(octokit, "fcf", "freecodexyz", varName, value);
+                const repo = await getLocalGithubRepo(octokit);
+                await setRepoVariable(octokit, repo.repoName, repo.repoOwnerName, varName, value);
                 console.log(`variable set: ${varName}`);
             } catch (err) { die(err); }
         });
