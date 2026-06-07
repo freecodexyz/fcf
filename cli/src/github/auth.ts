@@ -1,7 +1,7 @@
 import { getCommandOutput } from "@/utils/getCommandOutput.js";
 import { Octokit } from "@octokit/core";
 
-let octokit: Octokit | null;
+let octokit: Octokit | null = null;
 
 async function getLocalGitToken(): Promise<string> {
     const out = await getCommandOutput("git", ["credential", "fill"], `protocol=https\nhost=github.com\n\n`);
