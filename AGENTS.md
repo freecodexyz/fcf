@@ -107,6 +107,8 @@ release path. They mutate `cli/package.json`.
 ## Code Style
 
 - Prefer small, direct changes. Avoid broad refactors unless the user asks.
+- Never add more then the user explicitly asked for.
+- Avoid separating implementations in multiple functions and helper functions unless the user explicitly ask for it.
 - Match nearby formatting in each file. There is no configured TypeScript
   formatter in the CLI package.
 - TypeScript is strict ESM with `module: nodenext`, `verbatimModuleSyntax`,
