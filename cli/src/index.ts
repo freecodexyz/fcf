@@ -12,6 +12,7 @@ import { foundry, sepolia } from "viem/chains";
 import { importAbi } from "@/utils/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
 import { b64urlToHex, jwtKid, parseJwt, requestGithubOidcToken } from "@/github/oidc.js";
+import { getOctokit } from "./github/auth.js";
 
 const COMMAND_NAME = "fcf";
 const COMMAND_DESCRIPTION = "FCF CLI tool.";
@@ -38,6 +39,7 @@ function buildProgram(): Command {
     addRegisterCommand(program);
     addKeysSyncCommand(program);
     addListCommand(program);
+    addGithubCommand(program);
 
     return program;
 }
@@ -155,6 +157,18 @@ function addListCommand(program: Command): void {
                     `repo=${repoId} ownerId=${githubOwnerId} registrant=${registrant} at=${registeredAt}`
                 );
             }
+        });
+}
+
+function addGithubCommand(program: Command): void {
+    program
+        .command("github")
+        .command("whoami")
+        .action(async (_) => {
+            let octokit;
+            let data;
+            try { octokit = await getOctokit(); data = (await octokit.request("GET /user")).data; } catch (err) { die(err); }
+            if (!data.login) die("No GitHub login data found"); else console.log(`user=${data.login}   profile=${data.html_url}`);
         });
 }
 
