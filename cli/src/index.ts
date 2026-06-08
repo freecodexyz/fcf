@@ -18,7 +18,8 @@ import { getRepoSecretMetadata, setRepoSecret } from "./github/secrets.js";
 import { getRepoVariableMetadata, setRepoVariable } from "./github/vars.js";
 import { createWallet } from "./wallet/create.js";
 import { DEFAULT_PRIVATE_KEY_SECRET_NAME, linkWallet } from "./wallet/link.js";
-import { walletFilePath } from "./wallet/store.js";
+import { getLocalWallet, walletFilePath } from "./wallet/store.js";
+import { wallet } from "viem/tempo/actions";
 
 const COMMAND_NAME = "fcf";
 const COMMAND_DESCRIPTION = "FCF CLI tool.";
@@ -273,8 +274,13 @@ function addGithubVarsCommand(program: Command): void {
 }
 
 function clients() {
-    const privateKey = process.env.PRIVATE_KEY as `0x${string}`;
-    const rpcUrl = process.env.RPC_URL ?? "http://127.0.0.1:8545";
+    const privateKey = (() => {
+        let key;
+        if (process.env.PRIVATE_KEY) key = process.env.PRIVATE_KEY as `0x${string}`;
+        else try { const wallet = getLocalWallet(); key = wallet.privateKey; } catch (err) { die(err) };
+        return key;
+    })();
+    const rpcUrl = process.env.RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
     const chain = rpcUrl.includes("sepolia") ? sepolia : foundry;
     const account = privateKeyToAccount(privateKey);
 
