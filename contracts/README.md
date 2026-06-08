@@ -1,66 +1,19 @@
-## Foundry
+# Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Foundry workspace for fcf EVM contracts.
 
-Foundry consists of:
+## Contracts
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- `src/RIK.sol`: [Repository Identity Key](https://x.com/paoloanzn/status/2062559466760159598?s=20), an ERC-721 that registers GitHub repository identities from GitHub Actions OIDC JWTs.
 
-## Documentation
+## Commands
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
+Run from this directory:
 
 ```shell
-$ forge build
+forge fmt --check
+forge build --sizes
+forge test -vvv
 ```
 
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Deploy scripts live in `script/` and deployment helpers live beside this README.
