@@ -18,7 +18,7 @@
     "templates"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "scripts": {
     "dev": "tsx src/index.ts",

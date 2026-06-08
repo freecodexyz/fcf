@@ -7,7 +7,7 @@ It currently supports repository registration against the RIK contract, GitHub A
 ## Install
 
 ```shell
-npm install -g @freecodexyz/cli@alpha --registry=https://npm.pkg.github.com
+npm install -g @freecodexyz/cli@alpha
 ```
 
 ## Usage
@@ -55,10 +55,16 @@ pnpm abi
 
 ## Publishing
 
-`pnpm publish --tag <tag>` publishes the package to GitHub Packages, creates a
+`pnpm publish --tag <tag>` publishes the package to the npm registry, creates a
 GitHub Release named from the package version, and appends the generated release
 notes to `CHANGELOG.md`.
 
-Authenticate with a GitHub token that can publish packages and write releases.
+Authenticate to npm before publishing:
+
+```shell
+npm login
+pnpm publish --tag alpha
+```
+
 The post-publish release step reads `GH_TOKEN`, `GITHUB_TOKEN`,
-`NODE_AUTH_TOKEN`, or the current `gh auth token`.
+or the current `gh auth token`.

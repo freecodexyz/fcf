@@ -11,9 +11,9 @@ if (isTrue(process.env.npm_config_dry_run) || isTrue(process.env.NPM_CONFIG_DRY_
   process.exit(0);
 }
 
-const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.NODE_AUTH_TOKEN ?? ghAuthToken();
+const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ghAuthToken();
 if (!token) {
-  throw Error("GH_TOKEN, GITHUB_TOKEN, NODE_AUTH_TOKEN, or gh auth is required to create a GitHub Release.");
+  throw Error("GH_TOKEN, GITHUB_TOKEN, or gh auth is required to create a GitHub Release.");
 }
 
 const repository = githubRepositoryFromPackage() ?? githubRepositoryFromOrigin();
