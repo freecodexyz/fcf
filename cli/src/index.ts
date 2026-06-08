@@ -16,6 +16,9 @@ import { getOctokit } from "./github/auth.js";
 import { getLocalGithubRepo } from "./github/repo.js";
 import { getRepoSecretMetadata, setRepoSecret } from "./github/secrets.js";
 import { getRepoVariableMetadata, setRepoVariable } from "./github/vars.js";
+import { createWallet } from "./wallet/create.js";
+import { DEFAULT_PRIVATE_KEY_SECRET_NAME, linkWallet } from "./wallet/link.js";
+import { walletFilePath } from "./wallet/store.js";
 
 const COMMAND_NAME = "fcf";
 const COMMAND_DESCRIPTION = "FCF CLI tool.";
@@ -42,12 +45,40 @@ function buildProgram(): Command {
     addRegisterCommand(program);
     addKeysSyncCommand(program);
     addListCommand(program);
+    addWalletCommand(program);
     const githubCommand = program.command("github");
     addGithubWhoamiCommand(githubCommand);
     addGithubSecretsCommand(githubCommand);
     addGithubVarsCommand(githubCommand);
 
     return program;
+}
+
+function addWalletCommand(program: Command): void {
+    const walletCommand = program.command("wallet");
+
+    walletCommand
+        .command("create")
+        .option("--force", "overwrite existing local wallet")
+        .action((opts) => {
+            try {
+                const wallet = createWallet({ force: Boolean(opts.force) });
+                console.log(`wallet created: ${wallet.address}`);
+                console.log(`saved: ${walletFilePath()}`);
+            } catch (err) { die(err); }
+        });
+
+    // set FCF_PRIVATE_KEY in the active github repo -> used after `wallet create`
+    walletCommand
+        .command("link")
+        .option("--secret-name <name>", "GitHub Actions private key secret name", DEFAULT_PRIVATE_KEY_SECRET_NAME)
+        .action(async (opts) => {
+            try {
+                const wallet = await linkWallet({ secretName: opts.secretName });
+                console.log(`wallet linked: ${wallet.address}`);
+                console.log(`secret set: ${opts.secretName}`);
+            } catch (err) { die(err); }
+        });
 }
 
 // spawns the github action workflow file that runs the `register` command
