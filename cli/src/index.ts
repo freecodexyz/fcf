@@ -21,15 +21,15 @@ import { DEFAULT_PRIVATE_KEY_SECRET_NAME, linkWallet } from "./wallet/link.js";
 import { getLocalWallet, walletFilePath } from "./wallet/store.js";
 import { wallet } from "viem/tempo/actions";
 
-const COMMAND_NAME = "fcf";
-const COMMAND_DESCRIPTION = "FCF CLI tool.";
-const VERSION = packageJson?.version || "v0.0.1";
+const COMMAND_NAME                      = "fcf";
+const COMMAND_DESCRIPTION               = "FCF CLI tool.";
+const VERSION                           = packageJson?.version || "v0.0.1";
 
-const DEFAULT_LIST_BLOCK_RANGE = 50_000n;
-const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
+const DEFAULT_LIST_BLOCK_RANGE          = 50_000n;
+const GITHUB_ISSUER                     = "https://token.actions.githubusercontent.com";
 
-const REGISTER_WORKFLOW_PATH = ".github/workflows/fcf-register.yml";
-const REGISTER_WORKFLOW_TEMPLATE_PATH = new URL("../templates/fcf-register.yml", import.meta.url);
+const REGISTER_WORKFLOW_PATH            = ".github/workflows/fcf-register.yml";
+const REGISTER_WORKFLOW_TEMPLATE_PATH   = new URL("../templates/fcf-register.yml", import.meta.url);
 
 const abi = loadAbi();
 const RepoRegisteredEvent = parseAbiItem(
