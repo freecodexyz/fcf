@@ -3,16 +3,22 @@
   "version": "0.5.2-alpha",
   "description": "",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/freecodexyz/fcf.git",
+    "directory": "cli"
+  },
   "bin": {
     "fcf": "./dist/index.js"
   },
   "files": [
+    "CHANGELOG.md",
     "dist",
     "src/abi/RIK.json",
     "templates"
   ],
   "publishConfig": {
-    "access": "public"
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -20,6 +26,7 @@
     "build": "tsup src/index.ts --format esm --dts --clean",
     "version:minor": "node scripts/bump-minor.mjs",
     "prepublishOnly": "pnpm version:minor && pnpm abi && pnpm test && pnpm typecheck && pnpm build",
+    "postpublish": "node scripts/postpublish-github.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
