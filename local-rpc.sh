@@ -110,18 +110,30 @@ printf 'Foundry root: %s\n' "$FOUNDRY_ROOT"
 printf 'Deployer private key: %s\n' "$PRIVATE_KEY"
 printf 'Owner address: %s\n' "$OWNER_ADDRESS"
 
-if ! DEPLOY_OUTPUT="$(forge create \
-  --root "$FOUNDRY_ROOT" \
-  --broadcast \
-  --rpc-url "$RPC_URL" \
-  --private-key "$PRIVATE_KEY" \
-  "$CONTRACT_PATH_IDENTIFIER" \
-  --constructor-args "$OWNER_ADDRESS" 2>&1)"; then
-  printf '%s\n' "$DEPLOY_OUTPUT" >&2
-  exit 1
+if [[ "$CONTRACT_PATH_IDENTIFIER" == "src/RIK.sol:RIK" ]]; then
+  if ! DEPLOY_OUTPUT="$(PRIVATE_KEY="$PRIVATE_KEY" forge script \
+    --root "$FOUNDRY_ROOT" \
+    script/Deploy.s.sol \
+    --broadcast \
+    --rpc-url "$RPC_URL" \
+    --force 2>&1)"; then
+    printf '%s\n' "$DEPLOY_OUTPUT" >&2
+    exit 1
+  fi
+else
+  if ! DEPLOY_OUTPUT="$(forge create \
+    --root "$FOUNDRY_ROOT" \
+    --broadcast \
+    --rpc-url "$RPC_URL" \
+    --private-key "$PRIVATE_KEY" \
+    "$CONTRACT_PATH_IDENTIFIER" \
+    --constructor-args "$OWNER_ADDRESS" 2>&1)"; then
+    printf '%s\n' "$DEPLOY_OUTPUT" >&2
+    exit 1
+  fi
 fi
 
-CONTRACT_ADDRESS="$(printf '%s\n' "$DEPLOY_OUTPUT" | awk '/Deployed to:/ {print $3; exit} /Contract Address:/ {print $3; exit}')"
+CONTRACT_ADDRESS="$(printf '%s\n' "$DEPLOY_OUTPUT" | awk '/rik: contract RIK/ {print $4; exit} /Deployed to:/ {print $3; exit} /Contract Address:/ {print $3; exit}')"
 
 printf '%s\n' "$DEPLOY_OUTPUT"
 

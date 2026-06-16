@@ -4,6 +4,7 @@
 pragma solidity ^0.8.24;
 
 import {Script} from "forge-std/Script.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {RIK} from "../src/RIK.sol";
 
 contract Deploy is Script {
@@ -12,7 +13,8 @@ contract Deploy is Script {
         address owner = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
-        rik = new RIK(owner);
+        address proxy = Upgrades.deployTransparentProxy("RIK.sol", owner, abi.encodeCall(RIK.initialize, (owner)));
+        rik = RIK(proxy);
         vm.stopBroadcast();
     }
 }

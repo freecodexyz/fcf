@@ -13,6 +13,7 @@ ARGS=(
   script/Deploy.s.sol
   --rpc-url "$SEPOLIA_RPC_URL"
   --broadcast
+  --force
 )
 
 if [[ "$VERIFY" == "true" ]]; then

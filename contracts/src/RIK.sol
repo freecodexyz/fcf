@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {RSA} from "@openzeppelin/contracts/utils/cryptography/RSA.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {JsonClaim} from "./JsonClaim.sol";
 
-contract RIK is ERC721, Ownable {
+contract RIK is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     using RSA for bytes32;
 
     struct RSAKey {
@@ -45,7 +46,15 @@ contract RIK is ERC721, Ownable {
     // NOTE: make it so contract owner can update this
     string public constant EXPECTED_ISS = "https://token.actions.githubusercontent.com";
 
-    constructor(address initialOwner) ERC721("Repository Identity Key", "RIK") Ownable(initialOwner) {}
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC721_init("Repository Identity Key", "RIK");
+        __Ownable_init(initialOwner);
+    }
 
     function register(
         bytes32 kid,
