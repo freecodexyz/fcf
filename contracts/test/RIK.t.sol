@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {RIK} from "../src/RIK.sol";
 import {JsonClaim} from "../src/JsonClaim.sol";
 
@@ -26,10 +25,7 @@ contract RIK_T is Test {
     }
 
     function setUp() public {
-        address implementation = address(new RIK());
-        address proxy =
-            UnsafeUpgrades.deployTransparentProxy(implementation, deployer, abi.encodeCall(RIK.initialize, (deployer)));
-        rik = RIK(proxy);
+        rik = new RIK(deployer);
     }
 
     function _loadFixture(string memory name) internal returns (Fixture memory f) {
