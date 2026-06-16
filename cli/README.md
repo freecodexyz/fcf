@@ -1,3 +1,7 @@
+<div>
+    <img src="../assets/fcf-canvas-landscape-cli.png" />
+</div>
+
 # fcf CLI
 
 TypeScript CLI for fcf.

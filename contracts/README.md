@@ -1,3 +1,7 @@
+<div>
+    <img src="../assets/fcf-canvas-landscape-contracts.png" />
+</div>
+
 # Contracts
 
 Foundry workspace for fcf EVM contracts.
