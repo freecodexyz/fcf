@@ -19,6 +19,11 @@ if [[ -z "${RIK_ADDRESS:-}" ]]; then
   exit 1
 fi
 
+if [[ -z "${SPLITTER_ADDRESS:-}" ]]; then
+  printf 'Missing SPLITTER_ADDRESS.\n' >&2
+  exit 1
+fi
+
 ARGS=(
   script/DeployRIKLauncher.s.sol
   --rpc-url "$BASE_SEPOLIA_RPC_URL"

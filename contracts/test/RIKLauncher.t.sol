@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {Test} from "forge-std/Test.sol";
-import {IAirlock, RIKLauncher} from "../src/RIKLauncher.sol";
+import {IAirlock, IRIKRoyaltySplitter, RIKLauncher} from "../src/RIKLauncher.sol";
 
 contract MockAirlock is IAirlock {
     address public asset = address(0xA55E7);
@@ -38,9 +38,20 @@ contract MockRegistry {
     }
 }
 
+contract MockRoyaltySplitter is IRIKRoyaltySplitter {
+    mapping(address => uint256) public repoOf;
+    address public lastCaller;
+
+    function registerMarket(address asset, uint256 repoId) external {
+        lastCaller = msg.sender;
+        repoOf[asset] = repoId;
+    }
+}
+
 contract RIKLauncher_T is Test {
     MockAirlock airlock;
     MockRegistry registry;
+    MockRoyaltySplitter splitter;
     RIKLauncher launcher;
 
     uint256 repoId = 11112;
@@ -49,7 +60,8 @@ contract RIKLauncher_T is Test {
     function setUp() public {
         airlock = new MockAirlock();
         registry = new MockRegistry();
-        launcher = new RIKLauncher(airlock, IERC721(address(registry)));
+        splitter = new MockRoyaltySplitter();
+        launcher = new RIKLauncher(airlock, IERC721(address(registry)), splitter);
 
         registry.setOwner(repoId, owner);
     }
@@ -66,6 +78,8 @@ contract RIKLauncher_T is Test {
         assertEq(asset, airlock.asset());
         assertEq(launcher.marketOf(repoId), asset);
         assertEq(launcher.repoOf(asset), repoId);
+        assertEq(splitter.lastCaller(), address(launcher));
+        assertEq(splitter.repoOf(asset), repoId);
         assertEq(airlock.lastCaller(), address(launcher));
         assertEq(airlock.lastInitialSupply(), p.initialSupply);
         assertEq(airlock.lastNumTokensToSell(), p.numTokensToSell);

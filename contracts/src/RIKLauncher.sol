@@ -26,9 +26,14 @@ interface IAirlock {
         returns (address asset, address pool, address governance, address timelock, address migrationPool);
 }
 
+interface IRIKRoyaltySplitter {
+    function registerMarket(address asset, uint256 repoId) external;
+}
+
 contract RIKLauncher {
     IAirlock public immutable airlock;
     IERC721 public immutable registry;
+    IRIKRoyaltySplitter public immutable splitter;
 
     mapping(uint256 => address) public marketOf; // repoId -> asset
     mapping(address => uint256) public repoOf; // asset -> repoId
@@ -40,9 +45,10 @@ contract RIKLauncher {
     error NotRikOwner(uint256 repoId, address caller);
     error AlreadyLaunched(uint256 repoId, address existing);
 
-    constructor(IAirlock _airlock, IERC721 _registry) {
+    constructor(IAirlock _airlock, IERC721 _registry, IRIKRoyaltySplitter _splitter) {
         airlock = _airlock;
         registry = _registry;
+        splitter = _splitter;
     }
 
     function launch(uint256 repoId, IAirlock.CreateParams calldata p) external returns (address asset) {
@@ -55,6 +61,7 @@ contract RIKLauncher {
         // send to doppler
         (asset,,,,) = airlock.create(p);
         marketOf[repoId] = asset;
+        splitter.registerMarket(asset, repoId);
         repoOf[asset] = repoId;
 
         emit MarketLaunched(repoId, asset, msg.sender);
