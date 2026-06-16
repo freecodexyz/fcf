@@ -159,10 +159,14 @@ contract RIK_T is Test {
         uint64 github_owner_id = 999;
         Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
 
-        // register -> get repo struct -> check registrant
         _addKey(f);
+        vm.warp(1_700_000_000);
         _register(f, repo_id, github_owner_id);
+
         RIK.Repo memory r = rik.repoOf(repo_id);
+        assertEq(r.githubRepoId, repo_id);
+        assertEq(r.githubOwnerId, github_owner_id);
+        assertEq(r.registeredAt, 1_700_000_000);
         assertEq(r.registrant, address(this));
     }
 
@@ -228,6 +232,43 @@ contract RIK_T is Test {
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId + 1, f.ownerId);
     }
 
+    function test_RejectsWrongOwnerId() public {
+        uint256 repo_id = 11112;
+        uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
+
+        _addKey(f);
+
+        vm.prank(f.recipient);
+        vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMismatch.selector, "repository_owner_id"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId + 1);
+    }
+
+    function test_RejectsWrongIssuer() public {
+        Fixture memory f = _loadFixture("wrong-issuer-jwt.json");
+
+        _addKey(f);
+
+        vm.prank(f.recipient);
+        vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMismatch.selector, "iss"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
+    }
+
+    function test_RejectsBadSignature() public {
+        Fixture memory f = _loadFixture("sample-jwt.json");
+        bytes memory badSignature = f.signature;
+        badSignature[0] = bytes1(uint8(badSignature[0]) ^ 1);
+
+        _addKey(f);
+
+        vm.prank(f.recipient);
+        vm.expectRevert(RIK.BadJwt.selector);
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, badSignature, f.repoId, f.ownerId);
+    }
+
     function test_RejectsExpired() public {
         uint256 repo_id = 11112;
         uint64 github_owner_id = 999;
@@ -238,6 +279,18 @@ contract RIK_T is Test {
         vm.warp(f.exp + 1);
         vm.prank(f.recipient);
         vm.expectRevert(bytes("token expired"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
+    }
+
+    function test_RejectsNotYetValid() public {
+        Fixture memory f = _loadFixture("future-nbf-jwt.json");
+
+        _addKey(f);
+
+        vm.warp(f.nbf - 1);
+        vm.prank(f.recipient);
+        vm.expectRevert(bytes("token not yet valid"));
 
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }

@@ -5,7 +5,7 @@ import { exit } from "node:process";
 
 import { Command } from "commander";
 import type { Abi } from "viem";
-import { createPublicClient, createWalletClient, http, parseAbiItem, parseEther, toHex } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi, parseAbiItem, parseEther, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry, baseSepolia } from "viem/chains";
 import { DopplerSDK } from "@whetstone-research/doppler-sdk/evm";
@@ -39,6 +39,9 @@ const VERBOSE_ERRORS                    = process.env.VERBOSE_ERRORS ? true : fa
 const ENABLE_MARKET_COMMAND             = process.env.ENABLE_MARKET_COMMAND ? true : false;
 
 const abi = loadAbi();
+const RIKLauncherAbi = parseAbi([
+    "function launch(uint256 repoId, (uint256 initialSupply, uint256 numTokensToSell, address numeraire, address tokenFactory, bytes tokenFactoryData, address governanceFactory, bytes governanceFactoryData, address poolInitializer, bytes poolInitializerData, address liquidityMigrator, bytes liquidityMigratorData, address integrator, bytes32 salt) p) returns (address asset)",
+]);
 const RepoRegisteredEvent = parseAbiItem(
     "event RepoRegistered(uint256 indexed repoId, address indexed registrant, uint64 githubOwnerId, uint64 registeredAt)"
 );
@@ -70,7 +73,9 @@ function addMarketCommand(program: Command): void {
 
     marketCommand
         .command("new")
-        .action(async (_) => {
+        .requiredOption("--launcher <addr>", "deployed RIKLauncher address")
+        .requiredOption("--repo-id <id>", "registered GitHub repository ID")
+        .action(async (opts) => {
 
             const { account, publicClient, walletClient } = clients();
             let doppler: DopplerSDK | null = null;
@@ -113,9 +118,19 @@ function addMarketCommand(program: Command): void {
                 .withUserAddress(account.address)
                 .build();
 
-            try { 
-                const { hookAddress, tokenAddress, poolId } = await doppler.factory.createDynamicAuction(params);
-                console.log(`New marketplace created!\npair=$${symbol}/$WETH hookAddress=${hookAddress} tokenAddress=${tokenAddress} poolId=${poolId}`);
+            try {
+                const repoId = BigInt(opts.repoId);
+                const factory = doppler.factory;
+                const { createParams, hookAddress, tokenAddress } = await factory.encodeCreateDynamicAuctionParams(params);
+                const hash = await walletClient.writeContract({
+                    address: opts.launcher as `0x${string}`,
+                    abi: RIKLauncherAbi,
+                    functionName: "launch",
+                    args: [repoId, createParams],
+                    account,
+                });
+                const r = await publicClient.waitForTransactionReceipt({ hash });
+                console.log(`New marketplace created!\nrepo=${repoId} pair=$${symbol}/$WETH hookAddress=${hookAddress} tokenAddress=${tokenAddress} tx=${hash} status=${r.status}`);
             } catch (err) { die(err); }
         });
 }
