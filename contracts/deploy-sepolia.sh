@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SEPOLIA_RPC_URL="${SEPOLIA_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}"
+SEPOLIA_RPC_URL="${SEPOLIA_RPC_URL:-https://sepolia.base.org}"
 VERIFY="${VERIFY:-true}"
 
 if [[ -z "${PRIVATE_KEY:-}" ]]; then
@@ -13,7 +13,6 @@ ARGS=(
   script/Deploy.s.sol
   --rpc-url "$SEPOLIA_RPC_URL"
   --broadcast
-  --force
 )
 
 if [[ "$VERIFY" == "true" ]]; then
