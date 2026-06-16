@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SEPOLIA_RPC_URL="${SEPOLIA_RPC_URL:-https://sepolia.base.org}"
+BASE_SEPOLIA_RPC_URL="${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}"
 VERIFY="${VERIFY:-true}"
 
 if [[ -z "${PRIVATE_KEY:-}" ]]; then
@@ -10,8 +10,8 @@ if [[ -z "${PRIVATE_KEY:-}" ]]; then
 fi
 
 ARGS=(
-  script/Deploy.s.sol
-  --rpc-url "$SEPOLIA_RPC_URL"
+  script/DeployRIK.s.sol
+  --rpc-url "$BASE_SEPOLIA_RPC_URL"
   --broadcast
 )
 
