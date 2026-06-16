@@ -5,9 +5,10 @@ import { exit } from "node:process";
 
 import { Command } from "commander";
 import type { Abi } from "viem";
-import { createPublicClient, createWalletClient, http, parseAbiItem, toHex } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbiItem, parseEther, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { foundry, sepolia } from "viem/chains";
+import { foundry, baseSepolia } from "viem/chains";
+import { DopplerSDK } from "@whetstone-research/doppler-sdk/evm";
 
 import { importAbi } from "@/utils/importAbi.js";
 import packageJson from "../package.json" with { type: "json" };
@@ -31,6 +32,12 @@ const GITHUB_ISSUER                     = "https://token.actions.githubuserconte
 const REGISTER_WORKFLOW_PATH            = ".github/workflows/fcf-register.yml";
 const REGISTER_WORKFLOW_TEMPLATE_PATH   = new URL("../templates/fcf-register.yml", import.meta.url);
 
+const WETH_BASE_SEPOLIA                 = "0x4200000000000000000000000000000000000006" as `0x${string}`;
+const DAY                               = 24 * 60 * 60;
+
+const VERBOSE_ERRORS                    = process.env.VERBOSE_ERRORS ? true : false;
+const ENABLE_MARKET_COMMAND             = process.env.ENABLE_MARKET_COMMAND ? true : false;
+
 const abi = loadAbi();
 const RepoRegisteredEvent = parseAbiItem(
     "event RepoRegistered(uint256 indexed repoId, address indexed registrant, uint64 githubOwnerId, uint64 registeredAt)"
@@ -52,7 +59,65 @@ function buildProgram(): Command {
     addGithubSecretsCommand(githubCommand);
     addGithubVarsCommand(githubCommand);
 
+    // experimental
+    if (ENABLE_MARKET_COMMAND) addMarketCommand(program);
+
     return program;
+}
+
+function addMarketCommand(program: Command): void {
+    const marketCommand = program.command("market");
+
+    marketCommand
+        .command("new")
+        .action(async (_) => {
+
+            const { account, publicClient, walletClient } = clients();
+            let doppler: DopplerSDK | null = null;
+            try { doppler = new DopplerSDK({ publicClient, walletClient, chainId: baseSepolia.id }); } catch (err) { die(err); }
+            if (!doppler) die("Failed to initialize doppler sdk");
+
+            // NOTE: share token config is hardcoded right now
+            const name              = "RIK Demo Share";
+            const symbol            = "RIKSH";
+            const tokenURI          = "ipfs://demo";
+            const tokencfg          = {name, symbol, tokenURI};
+
+            const initialSupply     = parseEther("1000000");
+            const numTokensToSell   = parseEther("500000");
+            const numeraire         = WETH_BASE_SEPOLIA;
+            const salecfg           = {initialSupply, numTokensToSell, numeraire};
+
+            const marketCap         = {start: 100_000, min: 10_000};
+            const numerairePrice    = 3000;
+            const minProceeds       = parseEther("0.5");
+            const maxProceeds       = parseEther("5");
+            const duration          = 1 * DAY; // <-- auction duration
+            const marketCapRangecfg = {marketCap, numerairePrice, minProceeds, maxProceeds, duration};
+
+            const migrationType     = "uniswapV4Split" as "uniswapV4Split";
+            const fee               = 3000;
+            const tickSpacing       = 60;
+            const streamableFees    = {lockDuration: 365 * DAY, beneficiaries: [
+                await doppler.getAirlockBeneficiary(),
+                {beneficiary: account.address, shares: parseEther("0.95")}, // <-- only %5 to protocol
+            ]};
+            const migrationcfg      = {type: migrationType, migrationType, fee, tickSpacing, streamableFees};
+            
+            const params = doppler.buildDynamicAuction()
+                .tokenConfig(tokencfg)
+                .saleConfig(salecfg)
+                .withMarketCapRange(marketCapRangecfg)
+                .withMigration(migrationcfg)
+                .withGovernance({type: "noOp"})
+                .withUserAddress(account.address)
+                .build();
+
+            try { 
+                const { hookAddress, tokenAddress, poolId } = await doppler.factory.createDynamicAuction(params);
+                console.log(`New marketplace created!\npair=$${symbol}/$WETH hookAddress=${hookAddress} tokenAddress=${tokenAddress} poolId=${poolId}`);
+            } catch (err) { die(err); }
+        });
 }
 
 function addWalletCommand(program: Command): void {
@@ -280,8 +345,8 @@ function clients() {
         else try { const wallet = getLocalWallet(); key = wallet.privateKey; } catch (err) { die(err) };
         return key;
     })();
-    const rpcUrl = process.env.RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
-    const chain = rpcUrl.includes("sepolia") ? sepolia : foundry;
+    const rpcUrl = process.env.RPC_URL ?? "https://sepolia.base.org";
+    const chain = rpcUrl.includes("sepolia") ? baseSepolia : foundry;
     const account = privateKeyToAccount(privateKey);
 
     return {
@@ -325,6 +390,7 @@ function die(err: any): never {
     let error = "unknown error";
     if (err instanceof Error) error = err.message;
     console.error(`${COMMAND_NAME}: ${error}; exiting.`);
+    if (VERBOSE_ERRORS) console.error(err);
     exit(1);
 }
 

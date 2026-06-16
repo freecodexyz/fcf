@@ -36,6 +36,7 @@
   "packageManager": "pnpm@10.24.0",
   "dependencies": {
     "@octokit/core": "^7.0.6",
+    "@whetstone-research/doppler-sdk": "^1.0.23",
     "commander": "^15.0.0",
     "libsodium-wrappers": "^0.8.4",
     "viem": "^2.52.2"
