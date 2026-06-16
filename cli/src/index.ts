@@ -26,7 +26,7 @@ const COMMAND_NAME                      = "fcf";
 const COMMAND_DESCRIPTION               = "FCF CLI tool.";
 const VERSION                           = packageJson?.version || "v0.0.1";
 
-const DEFAULT_LIST_BLOCK_RANGE          = 50_000n;
+const DEFAULT_LIST_BLOCK_RANGE          = 2000n;
 const GITHUB_ISSUER                     = "https://token.actions.githubusercontent.com";
 
 const REGISTER_WORKFLOW_PATH            = ".github/workflows/fcf-register.yml";
