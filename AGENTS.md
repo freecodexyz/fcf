@@ -43,7 +43,7 @@ Guidance for AI coding agents working in this repository. See
 | Contract tests | `cd contracts && forge test -vvv` |
 | Local Anvil deploy helper | `./local-rpc.sh src/RIK.sol:RIK` |
 | Base Sepolia RIK deploy script | `cd contracts && PRIVATE_KEY=... ./deploy-rik-base-sepolia.sh` |
-| Base Sepolia RIKLauncher deploy script | `cd contracts && PRIVATE_KEY=... AIRLOCK_ADDRESS=... RIK_ADDRESS=... SPLITTER_ADDRESS=... ./deploy-rik-launcher-base-sepolia.sh` |
+| Base Sepolia RIKLauncher + RIKRoyaltySplitter deploy script | `cd contracts && PRIVATE_KEY=... AIRLOCK_ADDRESS=... RIK_ADDRESS=... ./deploy-rik-launcher-and-splitter-base-sepolia.sh` |
 | Finds agents TODOs when asked | `rg -F 'TODO (AGENT)'` |
 
 Do not run release/versioning commands such as `cd cli && pnpm version:minor`
@@ -75,12 +75,13 @@ release path. They mutate `cli/package.json`.
   generate deterministic RSA/JWT fixtures for Solidity tests.
 - `contracts/script/DeployRIK.s.sol`: Foundry deploy script for `RIK`.
 - `contracts/script/DeployRIKLauncher.s.sol`: Foundry deploy script for
-  `RIKLauncher`.
+  `RIKLauncher` and `RIKRoyaltySplitter`.
 - `contracts/deploy-rik-base-sepolia.sh`: Base Sepolia deploy wrapper for
   `RIK` using `PRIVATE_KEY` and optional `BASE_SEPOLIA_RPC_URL` / `VERIFY`.
-- `contracts/deploy-rik-launcher-base-sepolia.sh`: Base Sepolia deploy wrapper
-  for `RIKLauncher` using `PRIVATE_KEY`, `AIRLOCK_ADDRESS`, `RIK_ADDRESS`,
-  `SPLITTER_ADDRESS`, and optional `BASE_SEPOLIA_RPC_URL` / `VERIFY`.
+- `contracts/deploy-rik-launcher-and-splitter-base-sepolia.sh`: Base Sepolia
+  deploy wrapper for `RIKLauncher` and `RIKRoyaltySplitter` using `PRIVATE_KEY`,
+  `AIRLOCK_ADDRESS`, `RIK_ADDRESS`, and optional `BASE_SEPOLIA_RPC_URL` /
+  `VERIFY`.
 - `contracts/lib/`: git submodules and vendor code. Do not edit directly.
 
 ## Architecture Boundaries

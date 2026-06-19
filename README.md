@@ -23,6 +23,14 @@ Create a **Repository Identity Key** to register a GitHub repository on-chain an
 
 _Note: fcf is currently testing on Base Sepolia._
 
+Install the Claude/Codex skill for AI-agent-managed RIK minting:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/freecodexyz/fcf/main/install-skill.sh | sh
+```
+
+The installer auto-detects Claude or Codex and installs `skills/rik-mint` into that agent's skills directory. To override the target, pipe into `AGENT=codex sh` or `SKILLS_DIR=/path/to/skills sh`.
+
 Latest RIK contract:
 
 ```text
