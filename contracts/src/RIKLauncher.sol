@@ -61,8 +61,8 @@ contract RIKLauncher {
         // send to doppler
         (asset,,,,) = airlock.create(p);
         marketOf[repoId] = asset;
-        splitter.registerMarket(asset, repoId);
         repoOf[asset] = repoId;
+        splitter.registerMarket(asset, repoId);
 
         emit MarketLaunched(repoId, asset, msg.sender);
     }

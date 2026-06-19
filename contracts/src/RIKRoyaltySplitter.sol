@@ -17,6 +17,10 @@ interface IMulticurvePool {
     function token1() external view returns (address);
 }
 
+interface IMulticurveFeeCollector {
+    function collectFees() external;
+}
+
 contract RIKRoyaltySplitter is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -56,8 +60,7 @@ contract RIKRoyaltySplitter is ReentrancyGuard {
     }
 
     function _repoOfPool(IMulticurvePool pool) internal view returns (uint256) {
-        // Doppler's DERC20 is the side of the pool which is NOT the numeraire
-        // both repoOf(t0) and repoOf(t1) are checked; one and only one is non-zero.
+        // Doppler's DERC20 is the registered side; the numeraire side is zero.
         uint256 r0 = repoOf[pool.token0()];
         uint256 r1 = repoOf[pool.token1()];
         if (r0 == 0 && r1 == 0) revert UnknownPool();
@@ -65,7 +68,25 @@ contract RIKRoyaltySplitter is ReentrancyGuard {
     }
 
     function pullLp(IMulticurvePool pool) external nonReentrant {
-        _repoOfPool(pool);
+        uint256 repoId = _repoOfPool(pool);
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        uint256 before0 = IERC20(token0).balanceOf(address(this));
+        uint256 before1 = IERC20(token1).balanceOf(address(this));
+
+        IMulticurveFeeCollector(address(pool)).collectFees();
+
+        uint256 delta0 = IERC20(token0).balanceOf(address(this)) - before0;
+        if (delta0 != 0) {
+            claimable[repoId][token0] += delta0;
+            emit Accrued(repoId, token0, delta0);
+        }
+
+        uint256 delta1 = IERC20(token1).balanceOf(address(this)) - before1;
+        if (delta1 != 0) {
+            claimable[repoId][token1] += delta1;
+            emit Accrued(repoId, token1, delta1);
+        }
     }
 
     /// @notice Pull all integrator fees the Airlock owes us in 'token', route them to repoId's bucket.

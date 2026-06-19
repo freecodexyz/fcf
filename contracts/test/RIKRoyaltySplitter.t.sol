@@ -75,10 +75,27 @@ contract SplitterMockRegistry {
 contract SplitterMockPool is IMulticurvePool {
     address public token0;
     address public token1;
+    uint256 public fees0;
+    uint256 public fees1;
 
     constructor(address _token0, address _token1) {
         token0 = _token0;
         token1 = _token1;
+    }
+
+    function setFees(uint256 _fees0, uint256 _fees1) external {
+        fees0 = _fees0;
+        fees1 = _fees1;
+    }
+
+    function collectFees() external {
+        uint256 amount0 = fees0;
+        uint256 amount1 = fees1;
+        fees0 = 0;
+        fees1 = 0;
+
+        if (amount0 != 0) require(IERC20(token0).transfer(msg.sender, amount0), "transfer0");
+        if (amount1 != 0) require(IERC20(token1).transfer(msg.sender, amount1), "transfer1");
     }
 }
 
@@ -99,6 +116,13 @@ contract RIKRoyaltySplitter_T is Test {
         splitter = new RIKRoyaltySplitter(IERC721(address(registry)), airlock, launcher);
 
         registry.setOwner(repoId, owner);
+    }
+
+    function test_strangerCannotRegister() public {
+        address asset = address(0xA55E7);
+
+        vm.expectRevert(RIKRoyaltySplitter.OnlyLauncher.selector);
+        splitter.registerMarket(asset, 42);
     }
 
     function test_RegisterMarketOnlyLauncher() public {
@@ -165,14 +189,22 @@ contract RIKRoyaltySplitter_T is Test {
     }
 
     function test_PullLpAcceptsRegisteredAssetOnEitherSide() public {
-        address asset = address(0xA55E7);
-        address numeraire = address(0xBEEF);
+        SplitterMockERC20 asset = new SplitterMockERC20();
+        SplitterMockERC20 numeraire = new SplitterMockERC20();
 
         vm.prank(launcher);
-        splitter.registerMarket(asset, repoId);
+        splitter.registerMarket(address(asset), repoId);
 
-        splitter.pullLp(new SplitterMockPool(asset, numeraire));
-        splitter.pullLp(new SplitterMockPool(numeraire, asset));
+        splitter.pullLp(new SplitterMockPool(address(asset), address(numeraire)));
+        splitter.pullLp(new SplitterMockPool(address(numeraire), address(asset)));
+    }
+
+    function test_pullLpForUnknownPoolReverts() public {
+        SplitterMockPool pool = new SplitterMockPool(address(0x1111), address(0x2222));
+
+        vm.expectRevert(RIKRoyaltySplitter.UnknownPool.selector);
+
+        splitter.pullLp(pool);
     }
 
     function test_PullLpRejectsUnknownPool() public {
@@ -181,6 +213,53 @@ contract RIKRoyaltySplitter_T is Test {
         vm.expectRevert(RIKRoyaltySplitter.UnknownPool.selector);
 
         splitter.pullLp(pool);
+    }
+
+    function test_pullLpDerivesRepoFromPool() public {
+        uint256 otherRepoId = 22223;
+        SplitterMockERC20 numeraire = new SplitterMockERC20();
+        SplitterMockPool pool = new SplitterMockPool(address(token), address(numeraire));
+        uint256 amount = 3 ether;
+
+        vm.prank(launcher);
+        splitter.registerMarket(address(token), repoId);
+
+        numeraire.mint(address(pool), amount);
+        pool.setFees(0, amount);
+
+        splitter.pullLp(pool);
+
+        assertEq(splitter.claimable(repoId, address(numeraire)), amount);
+        assertEq(splitter.claimable(otherRepoId, address(numeraire)), 0);
+    }
+
+    function test_twoReposIndependent() public {
+        uint256 repoA = 11112;
+        uint256 repoB = 22223;
+        SplitterMockERC20 assetA = new SplitterMockERC20();
+        SplitterMockERC20 assetB = new SplitterMockERC20();
+        SplitterMockERC20 weth = new SplitterMockERC20();
+        SplitterMockPool poolA = new SplitterMockPool(address(assetA), address(weth));
+        SplitterMockPool poolB = new SplitterMockPool(address(assetB), address(weth));
+
+        vm.startPrank(launcher);
+        splitter.registerMarket(address(assetA), repoA);
+        splitter.registerMarket(address(assetB), repoB);
+        vm.stopPrank();
+
+        weth.mint(address(poolA), 3 ether);
+        weth.mint(address(poolB), 7 ether);
+        poolA.setFees(0, 3 ether);
+        poolB.setFees(0, 7 ether);
+
+        splitter.pullLp(poolA);
+        splitter.pullLp(poolB);
+
+        uint256 claimableA = splitter.claimable(repoA, address(weth));
+        uint256 claimableB = splitter.claimable(repoB, address(weth));
+        assertGt(claimableA, 0);
+        assertGt(claimableB, 0);
+        assertNotEq(claimableA, claimableB);
     }
 
     function _fundFees(uint256 amount) internal {
