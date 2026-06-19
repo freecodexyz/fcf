@@ -5,7 +5,7 @@ import { exit } from "node:process";
 
 import { Command } from "commander";
 import type { Abi } from "viem";
-import { createPublicClient, createWalletClient, http, parseAbi, parseAbiItem, parseEther, toHex } from "viem";
+import { createPublicClient, createWalletClient, http, isAddress, parseAbi, parseAbiItem, parseEther, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry, baseSepolia } from "viem/chains";
 import { DopplerSDK } from "@whetstone-research/doppler-sdk/evm";
@@ -21,6 +21,8 @@ import { createWallet } from "./wallet/create.js";
 import { DEFAULT_PRIVATE_KEY_SECRET_NAME, linkWallet } from "./wallet/link.js";
 import { getLocalWallet, walletFilePath } from "./wallet/store.js";
 import { wallet } from "viem/tempo/actions";
+import { getConfig, type Config } from "@/utils/config.js";
+import { get } from "node:http";
 
 const COMMAND_NAME                      = "fcf";
 const COMMAND_DESCRIPTION               = "FCF CLI tool.";
@@ -190,7 +192,7 @@ function addRegisterCommand(program: Command): void {
         .command("register")
         .option("--oidc-token <token>", "GitHub's OIDC repository token")
         // needs to be removed in prod or be a default
-        .requiredOption("--contract <addr>", "deployed RIK address")
+        .option("--contract <addr>", "deployed RIK address")
         .action(async (opts) => {
             const { account, publicClient, walletClient } = clients();
             const oidcToken = opts.oidcToken ?? 
@@ -208,8 +210,12 @@ function addRegisterCommand(program: Command): void {
             const ownerId = BigInt(jwt.payload.repository_owner_id);
             if (!jwt.header.kid) die(new Error("jwt kid missing"));
 
+            const { rikContractAddress } = getConfig();
+            if (!rikContractAddress && !opts.contract) die(new Error("failed to get RIK contract address"));
+            if (!isAddress(rikContractAddress as `0x${string}`) && !opts.contract) die(new Error("invalid RIK contract address"));
+
             const hash = await walletClient.writeContract({
-                address: opts.contract as `0x${string}`,
+                address: (opts.contract ?? rikContractAddress) as `0x${string}`,
                 abi,
                 functionName: "register",
                 args: [
@@ -233,18 +239,22 @@ function addKeysSyncCommand(program: Command): void {
         .command("keys")
         .command("sync")
         // needs to be removed in prod or be a default
-        .requiredOption("--contract <addr>", "deployed RIK address")
+        .option("--contract <addr>", "deployed RIK address")
         .action(async (opts) => {
             const { account, publicClient, walletClient } = clients();
             const config = await fetchJson(`${GITHUB_ISSUER}/.well-known/openid-configuration`);
             const jwks = await fetchJson(config.jwks_uri);
+
+            const { rikContractAddress } = getConfig();
+            if (!rikContractAddress && !opts.contract) die(new Error("failed to get RIK contract address"));
+            if (!isAddress(rikContractAddress as `0x${string}`) && !opts.contract) die(new Error("invalid RIK contract address"));
 
             for (const key of jwks.keys ?? []) {
                 if (key.kty !== "RSA" || !key.kid || !key.n || !key.e) continue;
 
                 const kid = jwtKid(key.kid);
                 const hash = await walletClient.writeContract({
-                    address: opts.contract as `0x${string}`,
+                    address: (opts.contract ?? rikContractAddress) as `0x${string}`,
                     abi,
                     functionName: "addKey",
                     args: [kid, b64urlToHex(key.n), b64urlToHex(key.e)],
@@ -260,7 +270,7 @@ function addListCommand(program: Command): void {
     program
         .command("list")
         // needs to be removed in prod or be a default
-        .requiredOption("--contract <addr>", "deployed RIK address")
+        .option("--contract <addr>", "deployed RIK address")
         .option("--from-block <n>", "starting block")
         .action(async (opts) => {
             const { publicClient } = clients();
@@ -268,8 +278,12 @@ function addListCommand(program: Command): void {
                 ? BigInt(opts.fromBlock)
                 : await publicClient.getBlockNumber() - DEFAULT_LIST_BLOCK_RANGE;
 
+            const { rikContractAddress } = getConfig();
+            if (!rikContractAddress && !opts.contract) die(new Error("failed to get RIK contract address"));
+            if (!isAddress(rikContractAddress as `0x${string}`) && !opts.contract) die(new Error("invalid RIK contract address"));
+
             const logs = await publicClient.getLogs({
-                address: opts.contract as `0x${string}`,
+                address: (opts.contract ?? rikContractAddress) as `0x${string}`,
                 event: RepoRegisteredEvent,
                 fromBlock,
                 toBlock: "latest",
