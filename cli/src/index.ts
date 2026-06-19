@@ -38,6 +38,9 @@ const DAY                               = 24 * 60 * 60;
 const VERBOSE_ERRORS                    = process.env.VERBOSE_ERRORS ? true : false;
 const ENABLE_MARKET_COMMAND             = process.env.ENABLE_MARKET_COMMAND ? true : false;
 
+const RIK_ROYALTY_SPLITTER_ADDRESS      = process.env.RIK_ROYALTY_SPLITTER_ADDRESS;
+const RIK_LAUNCHER_ADDRESS              = process.env.RIK_LAUNCHER_ADDRESS;
+
 const abi = loadAbi();
 const RIKLauncherAbi = parseAbi([
     "function launch(uint256 repoId, (uint256 initialSupply, uint256 numTokensToSell, address numeraire, address tokenFactory, bytes tokenFactoryData, address governanceFactory, bytes governanceFactoryData, address poolInitializer, bytes poolInitializerData, address liquidityMigrator, bytes liquidityMigratorData, address integrator, bytes32 salt) p) returns (address asset)",
@@ -73,9 +76,11 @@ function addMarketCommand(program: Command): void {
 
     marketCommand
         .command("new")
-        .requiredOption("--launcher <addr>", "deployed RIKLauncher address")
         .requiredOption("--repo-id <id>", "registered GitHub repository ID")
         .action(async (opts) => {
+
+            if(!RIK_ROYALTY_SPLITTER_ADDRESS) die("Missing RIK_ROYALTY_SPLITTER_ADDRESS");
+            if(!RIK_LAUNCHER_ADDRESS) die("Missing RIK_ROYALTY_SPLITTER_ADDRESS");
 
             const { account, publicClient, walletClient } = clients();
             let doppler: DopplerSDK | null = null;
@@ -105,7 +110,7 @@ function addMarketCommand(program: Command): void {
             const tickSpacing       = 60;
             const streamableFees    = {lockDuration: 365 * DAY, beneficiaries: [
                 await doppler.getAirlockBeneficiary(),
-                {beneficiary: account.address, shares: parseEther("0.95")}, // <-- only %5 to protocol
+                {beneficiary: RIK_ROYALTY_SPLITTER_ADDRESS as `0x${string}`, shares: parseEther("0.95")}, // <-- only %5 to protocol
             ]};
             const migrationcfg      = {type: migrationType, migrationType, fee, tickSpacing, streamableFees};
             
@@ -116,6 +121,7 @@ function addMarketCommand(program: Command): void {
                 .withMigration(migrationcfg)
                 .withGovernance({type: "noOp"})
                 .withUserAddress(account.address)
+                .withIntegrator(RIK_ROYALTY_SPLITTER_ADDRESS as `0x${string}`)
                 .build();
 
             try {
@@ -123,7 +129,7 @@ function addMarketCommand(program: Command): void {
                 const factory = doppler.factory;
                 const { createParams, hookAddress, tokenAddress } = await factory.encodeCreateDynamicAuctionParams(params);
                 const hash = await walletClient.writeContract({
-                    address: opts.launcher as `0x${string}`,
+                    address: RIK_LAUNCHER_ADDRESS as `0x${string}`,
                     abi: RIKLauncherAbi,
                     functionName: "launch",
                     args: [repoId, createParams],
