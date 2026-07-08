@@ -16,6 +16,7 @@ At the foundation of fcf is the **Repository Identity Key** (**RIK**), an ERC-72
 
 - `contracts/`: EVM smart contracts that define protocol identity and funding primitives.
 - `packages/cli/`: command-line tooling for repository onboarding and protocol operations.
+- `packages/core-sdk/`: core TypeScript SDK for fcf integrations.
 
 ## Create a RIK
 
