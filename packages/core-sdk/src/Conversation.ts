@@ -1,5 +1,5 @@
 import { randomUUID, type UUID } from "node:crypto";
-import type { Message } from "@/message.js"
+import type { Message } from "@/Message.js"
 
 function dumpConversationToBytes(c: Conversation): Uint8Array {
     const payload = {
