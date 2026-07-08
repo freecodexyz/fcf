@@ -1,16 +1,11 @@
-import { Agent as HttpsAgent } from "node:https";
-import { URL } from "node:url";
+import type { Conversation } from "@/Conversation.js";
+import type { ToolTable } from "@/tools.js";
 
 export interface Provider {
     readonly identifier: string;
 }
 
-export type HttpsProviderConfig = {
-    baseUrl: URL
-};
-
-export interface HttpsProvider extends Provider {
-    readonly config: HttpsProviderConfig;
-    readonly baseUrl: URL;
-    readonly httpsAgent: HttpsAgent;
+export interface StreamingProvider<Payload = unknown> extends Provider {
+    buildPayload(conversation: Conversation, toolTable: ToolTable): Payload;
+    streamResponse(payload: Payload, stdout: NodeJS.WritableStream): Promise<string>;
 }

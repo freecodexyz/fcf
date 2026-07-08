@@ -33,24 +33,23 @@ export type SearchMessageResult<Message, E = Error> =
 
 export class Conversation {
     readonly #uuid: UUID;
-    #messages: Message[];
+    #messages: readonly Message[];
 
-    private constructor(messages: Message[]) {
+    private constructor(messages: readonly Message[]) {
         this.#uuid = randomUUID();
-        this.#messages = messages;
+        this.#messages = [...messages];
     }
 
-    static fromMessages(messages?: Message[]) {
-        const m = (messages && messages?.length != 0) ? messages : [] as Message[];
-        return new Conversation(m);
+    static fromMessages(messages: readonly Message[] = []) {
+        return new Conversation(messages);
     }
 
     get uuid(): UUID {
         return this.#uuid;
     }
 
-    get messages(): Message[] {
-        return this.#messages;
+    get messages(): readonly Message[] {
+        return [...this.#messages];
     }
 
     searchMessage(uuid: UUID): SearchMessageResult<Message, "message_not_found"> {
@@ -67,7 +66,7 @@ export class Conversation {
     }
 
     addMessage(message: Message): void {
-        this.#messages = [...this.#messages, message] as Message[];
+        this.#messages = [...this.#messages, message];
     }
 
     dumpToBytes(): Uint8Array { return dumpConversationToBytes(this); }
