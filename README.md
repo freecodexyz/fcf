@@ -15,7 +15,7 @@ At the foundation of fcf is the **Repository Identity Key** (**RIK**), an ERC-72
 ## Monorepo
 
 - `contracts/`: EVM smart contracts that define protocol identity and funding primitives.
-- `cli/`: command-line tooling for repository onboarding and protocol operations.
+- `packages/cli/`: command-line tooling for repository onboarding and protocol operations.
 
 ## Create a RIK
 

@@ -8,7 +8,7 @@ Guidance for AI coding agents working in this repository. See
 - Project name: write it as `fcf` in prose and commands.
 - Purpose: CLI tooling and EVM smart contracts for the
   `@freecodexyz` funding layer.
-- Repository shape: small monorepo with a TypeScript CLI in `cli/` and a
+- Repository shape: small monorepo with a TypeScript CLI in `packages/cli/` and a
   Foundry Solidity project in `contracts/`.
 - CLI stack: Node 24 in CI, ESM TypeScript, `pnpm@10.24.0`, Commander, Viem,
   tsup, tsx, TypeScript, and Vitest.
@@ -20,7 +20,7 @@ Guidance for AI coding agents working in this repository. See
 ## Environment Setup
 
 - Use Node 24 for CLI work to match GitHub Actions.
-- Use Corepack and pnpm in `cli/`; there is no root `package.json`.
+- Use Corepack and pnpm from the workspace root or `packages/cli/`.
 - Initialize submodules before contract work:
   `git submodule update --init --recursive`.
 - Install Foundry for contract build/test commands: `forge`, `cast`, and
@@ -32,12 +32,12 @@ Guidance for AI coding agents working in this repository. See
 
 | Purpose | Command |
 | --- | --- |
-| Install CLI dependencies | `cd cli && corepack enable && pnpm install --frozen-lockfile` |
-| Run CLI from source | `cd cli && pnpm dev -- --help` |
-| CLI typecheck | `cd cli && pnpm typecheck` |
-| CLI tests | `cd cli && pnpm test` |
-| CLI build | `cd cli && pnpm build` |
-| Regenerate committed ABI | `cd cli && pnpm abi` |
+| Install CLI dependencies | `corepack enable && pnpm install --frozen-lockfile` |
+| Run CLI from source | `cd packages/cli && pnpm dev -- --help` |
+| CLI typecheck | `cd packages/cli && pnpm typecheck` |
+| CLI tests | `cd packages/cli && pnpm test` |
+| CLI build | `cd packages/cli && pnpm build` |
+| Regenerate committed ABI | `cd packages/cli && pnpm abi` |
 | Contract format check | `cd contracts && forge fmt --check` |
 | Contract build with sizes | `cd contracts && forge build --sizes` |
 | Contract tests | `cd contracts && forge test -vvv` |
@@ -46,27 +46,27 @@ Guidance for AI coding agents working in this repository. See
 | Base Sepolia RIKLauncher + RIKRoyaltySplitter deploy script | `cd contracts && PRIVATE_KEY=... AIRLOCK_ADDRESS=... RIK_ADDRESS=... ./deploy-rik-launcher-and-splitter-base-sepolia.sh` |
 | Finds agents TODOs when asked | `rg -F 'TODO (AGENT)'` |
 
-Do not run release/versioning commands such as `cd cli && pnpm version:minor`
-or `cd cli && pnpm prepublishOnly` unless the user explicitly asks for a
-release path. They mutate `cli/package.json`.
+Do not run release/versioning commands such as `cd packages/cli && pnpm version:minor`
+or `cd packages/cli && pnpm prepublishOnly` unless the user explicitly asks for a
+release path. They mutate `packages/cli/package.json`.
 
 ## Repository Structure
 
 - `.github/workflows/test-cli.yml`: CLI CI; installs with pnpm and runs
-  `pnpm test` under `cli/`.
+  `pnpm test` under `packages/cli/`.
 - `.github/workflows/test-contracts.yml`: contract CI; runs `forge fmt --check`,
   `forge build --sizes`, and `forge test -vvv` under `contracts/`.
 - `.github/workflows/fcf-register.yml`: checked-in registration workflow emitted
   by the CLI `init` command.
 - `local-rpc.sh`: root helper that starts Anvil, deploys a contract, prints the
   RPC URL/private key/owner/contract address, and waits until interrupted.
-- `cli/src/index.ts`: Commander CLI entrypoint.
-- `cli/templates/fcf-register.yml`: workflow template emitted by CLI `init`.
-- `cli/src/oidc.ts`: JWT base64url helpers, parsing, and GitHub `kid` hashing.
-- `cli/src/importAbi.ts`: loads the committed static ABI by default.
-- `cli/src/abi/RIK.json`: committed generated ABI used by the published CLI.
-- `cli/scripts/generate-abi.mjs`: copies the ABI from the Foundry artifact into
-  `cli/src/abi/RIK.json`.
+- `packages/cli/src/index.ts`: Commander CLI entrypoint.
+- `packages/cli/templates/fcf-register.yml`: workflow template emitted by CLI `init`.
+- `packages/cli/src/github/oidc.ts`: JWT base64url helpers, parsing, and GitHub `kid` hashing.
+- `packages/cli/src/utils/importAbi.ts`: loads the committed static ABI by default.
+- `packages/cli/src/abi/RIK.json`: committed generated ABI used by the published CLI.
+- `packages/cli/scripts/generate-abi.mjs`: copies the ABI from the Foundry artifact into
+  `packages/cli/src/abi/RIK.json`.
 - `contracts/src/RIK.sol`: repository identity ERC-721 and JWT verification.
 - `contracts/src/JsonClaim.sol`: minimal byte-search JSON claim helper.
 - `contracts/test/RIK.t.sol`: Foundry regression tests for registration,
@@ -103,12 +103,12 @@ release path. They mutate `cli/package.json`.
 - `JsonClaim` is deliberately small and byte-oriented. If claim parsing changes,
   add regression tests for missing claims, mismatched claims, and valid compact
   JWT payloads.
-- `cli/src/importAbi.ts` defaults to the committed static ABI. `SKIP_STATIC_ABI`
+- `packages/cli/src/utils/importAbi.ts` defaults to the committed static ABI. `SKIP_STATIC_ABI`
   switches to the Foundry artifact path for local development.
-- Keep `cli/templates/fcf-register.yml` and
+- Keep `packages/cli/templates/fcf-register.yml` and
   `.github/workflows/fcf-register.yml` behavior in sync when registration
   workflow semantics change.
-- Contract ABI changes must be followed by `cd cli && pnpm abi` so the packaged
+- Contract ABI changes must be followed by `cd packages/cli && pnpm abi` so the packaged
   CLI ABI stays current.
 
 ## Code Style
@@ -132,16 +132,16 @@ release path. They mutate `cli/package.json`.
 
 ## Testing
 
-- For CLI-only changes, run `cd cli && pnpm typecheck` and `cd cli && pnpm test`.
+- For CLI-only changes, run `cd packages/cli && pnpm typecheck` and `cd packages/cli && pnpm test`.
 - For contract-only changes, run `cd contracts && forge fmt --check`,
   `cd contracts && forge build --sizes`, and `cd contracts && forge test -vvv`.
-- For ABI-affecting contract changes, also run `cd cli && pnpm abi`,
-  `cd cli && pnpm typecheck`, and `cd cli && pnpm build`.
+- For ABI-affecting contract changes, also run `cd packages/cli && pnpm abi`,
+  `cd packages/cli && pnpm typecheck`, and `cd packages/cli && pnpm build`.
 - Keep Foundry tests deterministic and local. Do not hit GitHub, Sepolia, or
   other live RPC endpoints from unit tests.
 - Contract tests may use `vm.ffi` with `contracts/test/fixtures/load-fixture.mjs`;
   avoid adding more external process dependencies unless necessary.
-- Add CLI tests as Vitest tests under `cli/src/` or a future `cli/test/`
+- Add CLI tests as Vitest tests under `packages/cli/src/` or a future `packages/cli/test/`
   directory. Mock `fetch`, Viem clients, and filesystem writes rather than using
   live network calls.
 
@@ -172,10 +172,10 @@ release path. They mutate `cli/package.json`.
 - Do not change production/provider configuration without explicit approval:
   environment variable names, default RPC behavior, GitHub OIDC issuer,
   workflow permissions, contract addresses, or default package tags.
-- Do not edit generated or dependency directories directly: `cli/node_modules/`,
-  `cli/dist/`, `contracts/cache/`, `contracts/out/`, `contracts/broadcast/`,
+- Do not edit generated or dependency directories directly: `packages/cli/node_modules/`,
+  `packages/cli/dist/`, `contracts/cache/`, `contracts/out/`, `contracts/broadcast/`,
   or `contracts/lib/`.
-- The committed static ABI at `cli/src/abi/RIK.json` is generated but tracked;
-  update it only through `cd cli && pnpm abi` when the contract ABI changes.
+- The committed static ABI at `packages/cli/src/abi/RIK.json` is generated but tracked;
+  update it only through `cd packages/cli && pnpm abi` when the contract ABI changes.
 - Never replace pnpm with npm/yarn or Foundry with another contract toolchain
   without explicit user approval.

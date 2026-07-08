@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-const artifactUrl = new URL("../../contracts/out/RIK.sol/RIK.json", import.meta.url);
+const artifactUrl = new URL("../../../contracts/out/RIK.sol/RIK.json", import.meta.url);
 const abiUrl = new URL("../src/abi/RIK.json", import.meta.url);
 
 const artifact = JSON.parse(readFileSync(artifactUrl, "utf8"));

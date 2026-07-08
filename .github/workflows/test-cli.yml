@@ -5,17 +5,23 @@ permissions: {}
 on:
   push:
     paths:
-      - "cli/**"
+      - "packages/cli/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/test-cli.yml"
   pull_request:
     paths:
-      - "cli/**"
+      - "packages/cli/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/test-cli.yml"
   workflow_dispatch:
 
 defaults:
   run:
-    working-directory: cli
+    working-directory: packages/cli
 
 jobs:
   test:

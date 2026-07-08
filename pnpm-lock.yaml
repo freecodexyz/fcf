@@ -6,7 +6,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  packages/cli:
     dependencies:
       '@octokit/core':
         specifier: ^7.0.6

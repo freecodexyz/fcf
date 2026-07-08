@@ -4,7 +4,7 @@ import type { Abi } from "viem";
 import staticAbi from "../abi/RIK.json" with { type: "json" };
 
 const CONTRACT_NAME = "RIK";
-const ABI_PATH = fileURLToPath(new URL(`../../contracts/out/${CONTRACT_NAME}.sol/${CONTRACT_NAME}.json`, import.meta.url));
+const ABI_PATH = fileURLToPath(new URL(`../../../../contracts/out/${CONTRACT_NAME}.sol/${CONTRACT_NAME}.json`, import.meta.url));
 
 function checkPathExists(path: string): boolean {
   if (!path.trim()) return false;
