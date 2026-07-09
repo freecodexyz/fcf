@@ -27,7 +27,8 @@ export function readConfig(): Config {
 function initNewConfig(): Config {
     // define initial config shape and data
     const stub = {
-        rikContractAddress: RIK_CONTRACT_ADDRESS
+        rikContractAddress: RIK_CONTRACT_ADDRESS,
+        fcfWrapperAddress: "0xf696da98df236a36536e9385dAf05D196579612B"
     };
     writeConfig(stub);
     return stub;
