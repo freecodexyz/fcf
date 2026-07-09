@@ -23,6 +23,7 @@ import { getLocalWallet, walletFilePath } from "./wallet/store.js";
 import { wallet } from "viem/tempo/actions";
 import { getConfig, type Config } from "@/utils/config.js";
 import { get } from "node:http";
+import { unwrapB20, wrapB20, type ApprovalResult } from "./b20/b20-ops.js";
 
 const COMMAND_NAME                      = "fcf";
 const COMMAND_DESCRIPTION               = "FCF CLI tool.";
@@ -62,6 +63,7 @@ function buildProgram(): Command {
     addKeysSyncCommand(program);
     addListCommand(program);
     addWalletCommand(program);
+    addB20Command(program);
     const githubCommand = program.command("github");
     addGithubWhoamiCommand(githubCommand);
     addGithubSecretsCommand(githubCommand);
@@ -71,6 +73,40 @@ function buildProgram(): Command {
     if (ENABLE_MARKET_COMMAND) addMarketCommand(program);
 
     return program;
+}
+
+function addB20Command(program: Command): void {
+    const b20Command = program.command("b20");
+
+    b20Command
+        .command("wrap")
+        .argument("<amount>", "fcf amount to wrap")
+        .option("--wrapper <addr>", "deployed FCFWrapper address")
+        .action(async (amount: string, opts: { wrapper?: string }) => {
+            const { account, publicClient, walletClient } = clients();
+            const wrapperAddress = resolveFcfWrapperAddress(opts.wrapper);
+            try {
+                const result = await wrapB20({ amount, wrapperAddress, account, publicClient, walletClient });
+                console.log(
+                    `wrapped: amount=${result.amount} fcf=${result.fcfToken} wrappedB20=${result.wrappedB20} approve=${formatApproval(result.approval)} tx=${result.hash} status=${result.receipt.status}`
+                );
+            } catch (err) { die(err); }
+        });
+
+    b20Command
+        .command("unwrap")
+        .argument("<amount>", "wrapped B20 amount to unwrap")
+        .option("--wrapper <addr>", "deployed FCFWrapper address")
+        .action(async (amount: string, opts: { wrapper?: string }) => {
+            const { account, publicClient, walletClient } = clients();
+            const wrapperAddress = resolveFcfWrapperAddress(opts.wrapper);
+            try {
+                const result = await unwrapB20({ amount, wrapperAddress, account, publicClient, walletClient });
+                console.log(
+                    `unwrapped: amount=${result.amount} wrappedB20=${result.wrappedB20} approve=${formatApproval(result.approval)} tx=${result.hash} status=${result.receipt.status}`
+                );
+            } catch (err) { die(err); }
+        });
 }
 
 function addMarketCommand(program: Command): void {
@@ -419,6 +455,18 @@ function loadAbi(): Abi {
     } catch (err) {
         die(err);
     }
+}
+
+function resolveFcfWrapperAddress(wrapper?: string): `0x${string}` {
+    const { fcfWrapperAddress } = getConfig();
+    const address = wrapper ?? (typeof fcfWrapperAddress === "string" ? fcfWrapperAddress : undefined);
+    if (!address) die(new Error("failed to get FCFWrapper contract address"));
+    if (!isAddress(address)) die(new Error("invalid FCFWrapper contract address"));
+    return address;
+}
+
+function formatApproval(approval: ApprovalResult): string {
+    return approval.approved ? `${approval.hash} status=${approval.receipt.status}` : "skipped";
 }
 
 function die(err: any): never {
