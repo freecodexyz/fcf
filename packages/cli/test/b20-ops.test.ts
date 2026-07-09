@@ -28,6 +28,7 @@ function makeClients(allowance: bigint): {
 } {
     const reads: ReadCall[] = [];
     const writes: WriteCall[] = [];
+    let currentAllowance = allowance;
 
     return {
         reads,
@@ -37,7 +38,7 @@ function makeClients(allowance: bigint): {
                 reads.push(args);
                 if (args.functionName === "fcfToken") return fcfToken;
                 if (args.functionName === "wrappedB20") return wrappedB20;
-                if (args.functionName === "allowance") return allowance;
+                if (args.functionName === "allowance") return currentAllowance;
                 throw new Error(`unexpected read: ${args.functionName}`);
             },
             async waitForTransactionReceipt() {
@@ -47,6 +48,10 @@ function makeClients(allowance: bigint): {
         walletClient: {
             async writeContract(args) {
                 writes.push(args);
+                if (args.functionName === "approve") {
+                    const amount = args.args[1];
+                    if (typeof amount === "bigint") currentAllowance = amount;
+                }
                 return `0x${String(writes.length).padStart(64, "0")}` as Hash;
             },
         },

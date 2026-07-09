@@ -4,10 +4,10 @@ import { dirname } from "node:path";
 import { exit } from "node:process";
 
 import { Command } from "commander";
-import type { Abi } from "viem";
+import type { Abi, Chain } from "viem";
 import { createPublicClient, createWalletClient, http, isAddress, parseAbi, parseAbiItem, parseEther, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { foundry, baseSepolia } from "viem/chains";
+import { base, foundry, baseSepolia } from "viem/chains";
 import { DopplerSDK } from "@whetstone-research/doppler-sdk/evm";
 
 import { importAbi } from "@/utils/importAbi.js";
@@ -43,6 +43,11 @@ const ENABLE_MARKET_COMMAND             = process.env.ENABLE_MARKET_COMMAND ? tr
 
 const RIK_ROYALTY_SPLITTER_ADDRESS      = process.env.RIK_ROYALTY_SPLITTER_ADDRESS;
 const RIK_LAUNCHER_ADDRESS              = process.env.RIK_LAUNCHER_ADDRESS;
+
+type ClientsOptions = {
+    readonly chain?: Chain;
+    readonly rpcUrl?: string;
+};
 
 const abi = loadAbi();
 const RIKLauncherAbi = parseAbi([
@@ -83,7 +88,10 @@ function addB20Command(program: Command): void {
         .argument("<amount>", "fcf amount to wrap")
         .option("--wrapper <addr>", "deployed FCFWrapper address")
         .action(async (amount: string, opts: { wrapper?: string }) => {
-            const { account, publicClient, walletClient } = clients();
+            const { account, publicClient, walletClient } = clients({
+                chain: base,
+                rpcUrl: process.env.B20_RPC_URL ?? process.env.BASE_MAINNET_RPC_URL ?? "https://mainnet.base.org",
+            });
             const wrapperAddress = resolveFcfWrapperAddress(opts.wrapper);
             try {
                 const result = await wrapB20({ amount, wrapperAddress, account, publicClient, walletClient });
@@ -98,7 +106,10 @@ function addB20Command(program: Command): void {
         .argument("<amount>", "wrapped B20 amount to unwrap")
         .option("--wrapper <addr>", "deployed FCFWrapper address")
         .action(async (amount: string, opts: { wrapper?: string }) => {
-            const { account, publicClient, walletClient } = clients();
+            const { account, publicClient, walletClient } = clients({
+                chain: base,
+                rpcUrl: process.env.B20_RPC_URL ?? process.env.BASE_MAINNET_RPC_URL ?? "https://mainnet.base.org",
+            });
             const wrapperAddress = resolveFcfWrapperAddress(opts.wrapper);
             try {
                 const result = await unwrapB20({ amount, wrapperAddress, account, publicClient, walletClient });
@@ -120,9 +131,9 @@ function addMarketCommand(program: Command): void {
             if(!RIK_ROYALTY_SPLITTER_ADDRESS) die("Missing RIK_ROYALTY_SPLITTER_ADDRESS");
             if(!RIK_LAUNCHER_ADDRESS) die("Missing RIK_ROYALTY_SPLITTER_ADDRESS");
 
-            const { account, publicClient, walletClient } = clients();
+            const { account, publicClient, walletClient, chain } = clients();
             let doppler: DopplerSDK | null = null;
-            try { doppler = new DopplerSDK({ publicClient, walletClient, chainId: baseSepolia.id }); } catch (err) { die(err); }
+            try { doppler = new DopplerSDK({ publicClient, walletClient, chainId: chain.id }); } catch (err) { die(err); }
             if (!doppler) die("Failed to initialize doppler sdk");
 
             // NOTE: share token config is hardcoded right now
@@ -409,19 +420,24 @@ function addGithubVarsCommand(program: Command): void {
         });
 }
 
-function clients() {
+function clients(options: ClientsOptions = {}) {
     const privateKey = (() => {
         let key;
         if (process.env.PRIVATE_KEY) key = process.env.PRIVATE_KEY as `0x${string}`;
         else try { const wallet = getLocalWallet(); key = wallet.privateKey; } catch (err) { die(err) };
         return key;
     })();
-    const rpcUrl = process.env.RPC_URL ?? "https://sepolia.base.org";
-    const chain = rpcUrl.includes("sepolia") ? baseSepolia : foundry;
+    const rpcUrl = options.rpcUrl ?? process.env.RPC_URL ?? "https://sepolia.base.org";
+    const chain = options.chain ?? (
+        rpcUrl.includes("mainnet.base.org") ? base :
+        rpcUrl.includes("sepolia") ? baseSepolia :
+        foundry
+    );
     const account = privateKeyToAccount(privateKey);
 
     return {
         account,
+        chain,
         publicClient: createPublicClient({ chain, transport: http(rpcUrl) }),
         walletClient: createWalletClient({ account, chain, transport: http(rpcUrl) }),
     };

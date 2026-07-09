@@ -3,10 +3,15 @@ import { isAddress, parseAbi, parseEther } from "viem";
 
 import FCFWrapperAbi from "../abi/FCFWrapper.json" with { type: "json" };
 
-const fcfWrapperAbi = FCFWrapperAbi as Abi;
+const erc20ErrorAbi = parseAbi([
+    "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+    "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+]);
+const fcfWrapperAbi = [...FCFWrapperAbi, ...erc20ErrorAbi] as Abi;
 const erc20Abi = parseAbi([
     "function allowance(address owner, address spender) view returns (uint256)",
     "function approve(address spender, uint256 amount) returns (bool)",
+    "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
 ]);
 
 export type TransactionReceipt = {
@@ -152,5 +157,17 @@ async function approveIfNeeded(params: Omit<B20OperationParams, "amount"> & {
         account: params.account,
     });
     const receipt = await params.publicClient.waitForTransactionReceipt({ hash });
-    return { approved: true, hash, receipt };
+    if (receipt.status !== "success") throw new Error(`approval reverted: ${hash}`);
+    for (let attempt = 0; attempt < 10; attempt++) {
+        const updatedAllowance = await params.publicClient.readContract({
+            address: params.token,
+            abi: erc20Abi,
+            functionName: "allowance",
+            args: [params.account.address, params.spender],
+        });
+        if (typeof updatedAllowance !== "bigint") throw new Error("invalid ERC-20 allowance result");
+        if (updatedAllowance >= params.amount) return { approved: true, hash, receipt };
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    throw new Error(`approval not visible after receipt: ${hash}`);
 }
