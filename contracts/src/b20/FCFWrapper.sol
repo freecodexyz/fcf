@@ -20,8 +20,8 @@ contract FCFWrapper is Context, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address private constant _FCF_TOKEN = 0x67A7CA081Dc79B45fD1FA059Cd3b8dCcA779Aba3;
-    string private constant _WRAPPED_NAME = "Wrapped fcf";
-    string private constant _WRAPPED_SYMBOL = "wFCF";
+    string private constant _WRAPPED_NAME = "Wrapped Freecode";
+    string private constant _WRAPPED_SYMBOL = "WFCF";
     uint8 private constant _WRAPPED_DECIMALS = 18;
 
     IERC20 private immutable _underlying;
