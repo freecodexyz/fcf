@@ -114,6 +114,8 @@ release path. They mutate `packages/cli/package.json`.
 ## Code Style
 
 - Prefer small, direct changes. Avoid broad refactors unless the user asks.
+- When working inside a package or subproject, read its nearest sub-`AGENTS.md`
+  first, such as `contracts/AGENTS.md` or `packages/cli/AGENTS.md`.
 - Never add more then the user explicitly asked for.
 - Avoid separating implementations in multiple functions and helper functions unless the user explicitly ask for it.
 - Match nearby formatting in each file. There is no configured TypeScript
