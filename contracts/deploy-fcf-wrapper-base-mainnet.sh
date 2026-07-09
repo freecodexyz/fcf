@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_SEPOLIA_RPC_URL="${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}"
+BASE_MAINNET_RPC_URL="${BASE_MAINNET_RPC_URL:-https://mainnet.base.org}"
 VERIFY="${VERIFY:-true}"
 CONTRACTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FORGE_BIN="${FORGE_BIN:-base-forge}"
@@ -25,7 +25,7 @@ fi
 ARGS=(
   "$CONTRACTS_DIR/script/DeployFCFWrapper.s.sol:DeployFCFWrapper"
   --root "$CONTRACTS_DIR"
-  --rpc-url "$BASE_SEPOLIA_RPC_URL"
+  --rpc-url "$BASE_MAINNET_RPC_URL"
   --broadcast
 )
 
