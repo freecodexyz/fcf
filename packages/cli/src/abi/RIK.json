@@ -12,19 +12,6 @@
   },
   {
     "type": "function",
-    "name": "EXPECTED_ISS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "addKey",
     "inputs": [
       {
@@ -82,6 +69,19 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "expectedIssuer",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -739,6 +739,17 @@
   },
   {
     "type": "error",
+    "name": "NotRegistered",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "OwnableInvalidOwner",
     "inputs": [
       {
@@ -761,6 +772,17 @@
   },
   {
     "type": "error",
+    "name": "RepoIdTooLarge",
+    "inputs": [
+      {
+        "name": "repoId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "StringsInsufficientHexLength",
     "inputs": [
       {
@@ -774,6 +796,16 @@
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "TokenExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TokenNotYetValid",
+    "inputs": []
   },
   {
     "type": "error",

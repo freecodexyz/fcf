@@ -56,14 +56,16 @@ const privateKey = createPrivateKey(TEST_RSA_PRIVATE_KEY);
 const publicJwk = createPublicKey(privateKey).export({ format: "jwk" });
 
 const headerB64 = b64url({ alg: "RS256", typ: "JWT", kid: kidText });
-const payloadB64 = b64url({
+const payload = {
   iss,
   aud: recipient,
   repository_id: String(repoId),
   repository_owner_id: String(ownerId),
-  exp,
-  nbf,
-});
+};
+if (!fixture.omitExp) payload.exp = exp;
+if (!fixture.omitNbf) payload.nbf = nbf;
+
+const payloadB64 = b64url(payload);
 const signature = sign("RSA-SHA256", Buffer.from(`${headerB64}.${payloadB64}`), privateKey);
 
 const output = JSON.stringify({

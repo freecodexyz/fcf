@@ -12,17 +12,13 @@ import {JsonClaim} from "./JsonClaim.sol";
 contract RIK is ERC721, Ownable {
     using RSA for bytes32;
 
+    string private constant _EXPECTED_ISS = "https://token.actions.githubusercontent.com";
+
     struct RSAKey {
         bytes modulus;
         bytes exponent;
         bool active;
     }
-
-    event KeyAdded(bytes32 indexed kid);
-    event KeyRevoked(bytes32 indexed kid);
-
-    // store valid signing keys from GitHub -> they periodically rotate
-    mapping(bytes32 => RSAKey) private _keys;
 
     struct Repo {
         uint64 githubRepoId; // == tokenId -> kept for clarity
@@ -31,22 +27,39 @@ contract RIK is ERC721, Ownable {
         address registrant; // who called register()
     }
 
-    // EVM log event used for off-chain indexing
+    event KeyAdded(bytes32 indexed kid);
+    event KeyRevoked(bytes32 indexed kid);
     event RepoRegistered(uint256 indexed repoId, address indexed registrant, uint64 githubOwnerId, uint64 registeredAt);
 
-    mapping(uint256 => Repo) private _repos;
-
-    // errors
     error AlreadyRegistered(uint256 repoId);
     error UnknownKid(bytes32 kid);
     error BadJwt();
+    error TokenExpired();
+    error TokenNotYetValid();
+    error NotRegistered(uint256 tokenId);
+    error RepoIdTooLarge(uint256 repoId);
 
-    // pin trusted issuer
-    // NOTE: make it so contract owner can update this
-    string public constant EXPECTED_ISS = "https://token.actions.githubusercontent.com";
+    // store valid signing keys from GitHub; they periodically rotate
+    mapping(bytes32 => RSAKey) private _keys;
+    mapping(uint256 => Repo) private _repos;
 
+    /**
+     * @dev Sets the initial registry owner.
+     */
     constructor(address initialOwner) ERC721("Repository Identity Key", "RIK") Ownable(initialOwner) {}
 
+    /**
+     * @dev Registers a GitHub repository identity and mints its RIK to the caller.
+     *
+     * Requirements:
+     *
+     * - `kid` must identify an active GitHub Actions signing key.
+     * - `signature` must be valid for `headerB64.payloadB64`.
+     * - The JWT payload must match the caller, repository id, owner id, issuer, and active time window.
+     * - `repoId` must not already be registered and must fit in the stored repository metadata.
+     *
+     * Emits a {RepoRegistered} event.
+     */
     function register(
         bytes32 kid,
         bytes calldata headerB64,
@@ -55,63 +68,114 @@ contract RIK is ERC721, Ownable {
         uint256 repoId,
         uint64 githubOwnerId
     ) external {
+        address registrant = _msgSender();
         _verifyJwt(kid, headerB64, payloadB64, signature);
 
         bytes memory payload = bytes(Base64.decode(string(payloadB64)));
+        _verifyClaims(payload, registrant, repoId, githubOwnerId);
+        _verifyActiveWindow(payload);
 
-        // verify payload contains the right claim
-        JsonClaim.requireStringClaim(payload, "aud", Strings.toHexString(uint160(msg.sender), 20));
-        JsonClaim.requireStringClaim(payload, "repository_id", Strings.toString(repoId));
-        JsonClaim.requireStringClaim(payload, "repository_owner_id", Strings.toString(uint256(githubOwnerId)));
-
-        // verify issuer
-        JsonClaim.requireStringClaim(payload, "iss", EXPECTED_ISS);
-
-        // verify if JWT is expired
-        (uint256 exp_, bool fe) = _readUintClaim(payload, "exp");
-        (uint256 nbf_, bool fn) = _readUintClaim(payload, "nbf");
-        if (!fe || !fn) revert JsonClaim.ClaimMissing("exp/nbf");
-        // JWT expiry must be checked against chain time; small validator timestamp drift is acceptable here.
-        // forge-lint: disable-next-line(block-timestamp)
-        if (block.timestamp > exp_) revert("token expired");
-
-        // JWT expiry must be checked against chain time; small validator timestamp drift is acceptable here.
-        // forge-lint: disable-next-line(block-timestamp)
-        if (block.timestamp < nbf_) revert("token not yet valid");
-
-        // prevent double registration
-        if (_ownerOf(repoId) != address(0)) revert AlreadyRegistered(repoId);
-
-        Repo memory r = Repo({
-            // safe to truncate -> collision is irrelevant
-            // forge-lint: disable-next-line(unsafe-typecast)
-            githubRepoId: uint64(repoId),
-            githubOwnerId: githubOwnerId,
-            registeredAt: uint64(block.timestamp),
-            registrant: msg.sender
-        });
-        _repos[repoId] = r;
-
-        emit RepoRegistered(repoId, msg.sender, githubOwnerId, r.registeredAt);
-
-        _mint(msg.sender, repoId);
+        _register(registrant, repoId, githubOwnerId);
     }
 
-    function tokenIdOf(uint64 githubRepoId) external pure returns (uint256) {
+    /**
+     * @dev Returns the trusted GitHub Actions OIDC issuer.
+     */
+    function expectedIssuer() public pure virtual returns (string memory) {
+        return _EXPECTED_ISS;
+    }
+
+    /**
+     * @dev Returns the RIK token id for a GitHub repository id.
+     */
+    function tokenIdOf(uint64 githubRepoId) public pure virtual returns (uint256) {
         return uint256(githubRepoId);
     }
 
-    function repoOf(uint256 tokenId) external view returns (Repo memory) {
-        require(_ownerOf(tokenId) != address(0), "not registered");
+    /**
+     * @dev Returns repository metadata for `tokenId`.
+     *
+     * Requirements:
+     *
+     * - `tokenId` must be registered.
+     */
+    function repoOf(uint256 tokenId) public view virtual returns (Repo memory) {
+        if (_ownerOf(tokenId) == address(0)) revert NotRegistered(tokenId);
         return _repos[tokenId];
     }
 
+    /**
+     * @dev Adds or replaces an active GitHub Actions RSA signing key.
+     *
+     * Requirements:
+     *
+     * - The caller must be the contract owner.
+     *
+     * Emits a {KeyAdded} event.
+     */
     function addKey(bytes32 kid, bytes calldata n, bytes calldata e) external onlyOwner {
+        _addKey(kid, n, e);
+    }
+
+    /**
+     * @dev Revokes a GitHub Actions RSA signing key.
+     *
+     * Requirements:
+     *
+     * - The caller must be the contract owner.
+     *
+     * Emits a {KeyRevoked} event.
+     */
+    function revokeKey(bytes32 kid) external onlyOwner {
+        _revokeKey(kid);
+    }
+
+    /**
+     * @dev Registers `repoId` to `registrant`.
+     *
+     * Requirements:
+     *
+     * - `repoId` must not already be registered.
+     * - `repoId` must fit in the stored repository metadata.
+     *
+     * Emits a {RepoRegistered} event.
+     */
+    function _register(address registrant, uint256 repoId, uint64 githubOwnerId) internal virtual {
+        if (_ownerOf(repoId) != address(0)) revert AlreadyRegistered(repoId);
+        if (repoId > type(uint64).max) revert RepoIdTooLarge(repoId);
+
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint64 registeredAt = uint64(block.timestamp);
+        _repos[repoId] = Repo({
+            // casting is safe because repoId is bounded above.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            githubRepoId: uint64(repoId),
+            githubOwnerId: githubOwnerId,
+            registeredAt: registeredAt,
+            registrant: registrant
+        });
+
+        emit RepoRegistered(repoId, registrant, githubOwnerId, registeredAt);
+
+        _mint(registrant, repoId);
+    }
+
+    /**
+     * @dev Adds or replaces an active GitHub Actions RSA signing key.
+     *
+     * Emits a {KeyAdded} event.
+     */
+    function _addKey(bytes32 kid, bytes calldata n, bytes calldata e) internal virtual {
         _keys[kid] = RSAKey({modulus: n, exponent: e, active: true});
         emit KeyAdded(kid);
     }
 
-    function revokeKey(bytes32 kid) external onlyOwner {
+    /**
+     * @dev Revokes a GitHub Actions RSA signing key.
+     *
+     * Emits a {KeyRevoked} event.
+     */
+    function _revokeKey(bytes32 kid) internal virtual {
         _keys[kid].active = false;
         emit KeyRevoked(kid);
     }
@@ -130,6 +194,35 @@ contract RIK is ERC721, Ownable {
         if (!RSA.pkcs1Sha256(digest, signature, k.exponent, k.modulus)) revert BadJwt();
     }
 
+    function _verifyClaims(bytes memory payload, address registrant, uint256 repoId, uint64 githubOwnerId)
+        internal
+        pure
+    {
+        JsonClaim.requireStringClaim(payload, "aud", Strings.toHexString(uint160(registrant), 20));
+        JsonClaim.requireStringClaim(payload, "repository_id", Strings.toString(repoId));
+        JsonClaim.requireStringClaim(payload, "repository_owner_id", Strings.toString(uint256(githubOwnerId)));
+        JsonClaim.requireStringClaim(payload, "iss", _EXPECTED_ISS);
+    }
+
+    function _verifyActiveWindow(bytes memory payload) internal view {
+        uint256 exp_ = _requireUintClaim(payload, "exp");
+        uint256 nbf_ = _requireUintClaim(payload, "nbf");
+
+        // JWT validity must be checked against chain time; small validator timestamp drift is acceptable here.
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp > exp_) revert TokenExpired();
+
+        // JWT validity must be checked against chain time; small validator timestamp drift is acceptable here.
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < nbf_) revert TokenNotYetValid();
+    }
+
+    function _requireUintClaim(bytes memory payload, string memory key) internal pure returns (uint256 value) {
+        bool found;
+        (value, found) = _readUintClaim(payload, key);
+        if (!found) revert JsonClaim.ClaimMissing(key);
+    }
+
     function _readUintClaim(bytes memory payload, string memory key) internal pure returns (uint256 value, bool found) {
         bytes memory marker = abi.encodePacked('"', bytes(key), '":');
         int256 pos = JsonClaim.indexOf(payload, marker);
@@ -139,12 +232,15 @@ contract RIK is ERC721, Ownable {
         // casting to uint256 is safe because negative positions returned above.
         // forge-lint: disable-next-line(unsafe-typecast)
         uint256 i = uint256(pos) + marker.length;
+        uint256 valueStart = i;
+        if (i == payload.length) return (0, false);
+
         while (i < payload.length) {
             uint8 c = uint8(payload[i]);
             if (c < 0x30 || c > 0x39) break; // -> not a digit
             value = value * 10 + (c - 0x30);
             ++i;
         }
-        found = true;
+        found = i > valueStart;
     }
 }

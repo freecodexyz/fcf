@@ -1,0 +1,10 @@
+{
+  "kidText": "kid-001",
+  "iss": "https://token.actions.githubusercontent.com",
+  "recipient": "0x00000000000000000000000000000000000A11CE",
+  "repoId": 11112,
+  "ownerId": 999,
+  "exp": 4102444800,
+  "nbf": 0,
+  "omitExp": true
+}

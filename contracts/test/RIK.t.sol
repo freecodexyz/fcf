@@ -81,6 +81,10 @@ contract RIK_T is Test {
         assertEq(rik.symbol(), "RIK");
     }
 
+    function test_ExpectedIssuer() public view {
+        assertEq(rik.expectedIssuer(), "https://token.actions.githubusercontent.com");
+    }
+
     function test_RegisterArbitraryId() public {
         uint256 repo_id = 11112;
         uint64 owner_github_id = 11111;
@@ -149,7 +153,7 @@ contract RIK_T is Test {
     function test_RepoRevertsForUnregistered() public {
         uint256 repo_id = 11112;
 
-        vm.expectRevert(bytes("not registered"));
+        vm.expectRevert(abi.encodeWithSelector(RIK.NotRegistered.selector, repo_id));
 
         rik.repoOf(repo_id);
     }
@@ -245,6 +249,18 @@ contract RIK_T is Test {
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId + 1);
     }
 
+    function test_RejectsRepoIdTooLarge() public {
+        uint256 repo_id = uint256(type(uint64).max) + 1;
+        uint64 github_owner_id = 999;
+        Fixture memory f = _loadFixture("sample-jwt.json", repo_id, github_owner_id, address(this));
+
+        _addKey(f);
+
+        vm.expectRevert(abi.encodeWithSelector(RIK.RepoIdTooLarge.selector, repo_id));
+
+        _register(f, repo_id, github_owner_id);
+    }
+
     function test_RejectsWrongIssuer() public {
         Fixture memory f = _loadFixture("wrong-issuer-jwt.json");
 
@@ -252,6 +268,28 @@ contract RIK_T is Test {
 
         vm.prank(f.recipient);
         vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMismatch.selector, "iss"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
+    }
+
+    function test_RejectsMissingExp() public {
+        Fixture memory f = _loadFixture("missing-exp-jwt.json");
+
+        _addKey(f);
+
+        vm.prank(f.recipient);
+        vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMissing.selector, "exp"));
+
+        rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
+    }
+
+    function test_RejectsMissingNbf() public {
+        Fixture memory f = _loadFixture("missing-nbf-jwt.json");
+
+        _addKey(f);
+
+        vm.prank(f.recipient);
+        vm.expectRevert(abi.encodeWithSelector(JsonClaim.ClaimMissing.selector, "nbf"));
 
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }
@@ -278,7 +316,7 @@ contract RIK_T is Test {
 
         vm.warp(f.exp + 1);
         vm.prank(f.recipient);
-        vm.expectRevert(bytes("token expired"));
+        vm.expectRevert(RIK.TokenExpired.selector);
 
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }
@@ -290,7 +328,7 @@ contract RIK_T is Test {
 
         vm.warp(f.nbf - 1);
         vm.prank(f.recipient);
-        vm.expectRevert(bytes("token not yet valid"));
+        vm.expectRevert(RIK.TokenNotYetValid.selector);
 
         rik.register(f.kid, f.headerB64, f.payloadB64, f.signature, f.repoId, f.ownerId);
     }
