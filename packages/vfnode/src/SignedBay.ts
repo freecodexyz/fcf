@@ -1,6 +1,5 @@
 import { TextDecoder, TextEncoder } from "node:util";
 import { isAddressEqual, recoverMessageAddress, toHex, type Address, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import type { Bay, BayEndpoint, BayErrorListener, BayPacketListener } from "./Bay.js";
 import type { Identity, NodeId } from "./Identity.js";
 
@@ -33,11 +32,6 @@ export class SignedBay {
     #sequence = 0;
 
     constructor(options: SignedBayOptions) {
-        const account = privateKeyToAccount(options.identity.privateKey);
-        if (!isAddressEqual(account.address, options.identity.publicAddress)) {
-            throw new Error("Identity publicAddress does not match privateKey");
-        }
-
         this.#bay = options.bay;
         this.#identity = options.identity;
         this.#now = options.now ?? Date.now;
@@ -75,8 +69,7 @@ export class SignedBay {
             timestamp: this.#now(),
             payload: toHex(data),
         };
-        const account = privateKeyToAccount(this.#identity.privateKey);
-        const signature = await account.signMessage({ message: signedBayMessage(packet) });
+        const signature = await this.#identity.signMessage(signedBayMessage(packet));
 
         this.#sequence += 1;
 

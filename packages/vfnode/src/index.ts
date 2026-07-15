@@ -8,8 +8,8 @@ export type {
     BayRemote,
     BaySocketType,
 } from "./Bay.js";
-export { createIdentity, createNodeId } from "./Identity.js";
-export type { Identity, NodeId } from "./Identity.js";
+export { Identity, createNodeId } from "./Identity.js";
+export type { NodeId } from "./Identity.js";
 export {
     SignedBay,
     decodeSignedBayPacket,
