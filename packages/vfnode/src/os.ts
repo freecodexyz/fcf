@@ -7,7 +7,7 @@ export function getOs(): OperatingSystem {
     return type() as OperatingSystem;
 }
 
-export function isOsSupported(os: OperatingSystem): Result<Boolean, "unsupported_os"> {
+export function isOsSupported(os: OperatingSystem): Result<boolean, "unsupported_os"> {
     switch (os) {
         case "Linux": return ok(true);
         case "Darwin": return ok(true);

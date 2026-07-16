@@ -11,6 +11,17 @@ export type {
 export { Identity, createNodeId } from "./Identity.js";
 export type { NodeId } from "./Identity.js";
 export {
+    KeychainIdentityStore,
+    identityKeychainAccount,
+    identityKeychainService,
+} from "./KeychainIdentityStore.js";
+export type {
+    IdentityRecordVersion,
+    IdentityStore,
+    IdentityStoreError,
+    StoredIdentity,
+} from "./KeychainIdentityStore.js";
+export {
     SignedBay,
     decodeSignedBayPacket,
     encodeSignedBayPacket,

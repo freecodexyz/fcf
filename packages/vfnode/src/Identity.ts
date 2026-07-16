@@ -19,6 +19,15 @@ export class Identity {
     static create(nodeId: NodeId): Result<Identity, "failed_to_create_identity"> {
         try {
             const privateKey = generatePrivateKey();
+
+            return Identity.fromPrivateKey(nodeId, privateKey);
+        } catch {
+            return err("failed_to_create_identity");
+        }
+    }
+
+    static fromPrivateKey(nodeId: NodeId, privateKey: Hex): Result<Identity, "failed_to_create_identity"> {
+        try {
             const account = privateKeyToAccount(privateKey);
 
             return ok(new Identity(nodeId, account.address, privateKey));
