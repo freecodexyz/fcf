@@ -1,6 +1,6 @@
 # RIK Mint Workflow
 
-This workflow assumes the user asked to mint a Repository Identity Key for a GitHub repository on Base Sepolia.
+Use this workflow to mint a Repository Identity Key for a GitHub repository on Base Mainnet or Base Sepolia. Keep the network, RPC URL, contract address, wallet funding, and verification calls aligned.
 
 ## 1. Confirm The Target Repository
 
@@ -28,14 +28,33 @@ Do not revert unrelated user changes.
 
 ## 2. Set Common Values
 
-Use the user-provided values when available. Otherwise, for Base Sepolia testing use:
+Use user-provided, verified values when available. The project currently documents this Base Sepolia deployment:
 
 ```bash
+FCF_NETWORK=base-sepolia
 FCF_CONTRACT=0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac
-FCF_RPC_URL=https://base.sepolia.org
+FCF_RPC_URL=https://sepolia.base.org
+FCF_CHAIN_ID=84532
 ```
 
-When running local fcf commands that read chain state, the CLI expects `RPC_URL`:
+For Base Mainnet, require the deployed RIK address instead of guessing it:
+
+```bash
+FCF_NETWORK=base-mainnet
+FCF_CONTRACT=<deployed-base-mainnet-rik-address>
+FCF_RPC_URL=https://mainnet.base.org
+FCF_CHAIN_ID=8453
+```
+
+Base's public RPC endpoints are rate-limited; use the user's provider URL when supplied. Verify the RPC chain before writing repository variables or spending funds:
+
+```bash
+cast chain-id --rpc-url "$FCF_RPC_URL"
+```
+
+Require the result to equal `FCF_CHAIN_ID`. If `cast` is unavailable, query `eth_chainId` with another JSON-RPC client. Do not proceed on a mismatch.
+
+When running local fcf commands that read chain state, set `RPC_URL` explicitly. The current CLI otherwise defaults to Base Mainnet:
 
 ```bash
 RPC_URL="$FCF_RPC_URL" npm exec --yes --package=@freecodexyz/cli@alpha -- fcf list --contract "$FCF_CONTRACT"
@@ -75,7 +94,7 @@ Link the wallet to the repository as the encrypted `FCF_PRIVATE_KEY` GitHub Acti
 npm exec --yes --package=@freecodexyz/cli@alpha -- fcf wallet link
 ```
 
-The command prints the wallet address. Save the address in your working notes and ask the user to fund it with Base Sepolia ETH if it is not already funded. Never inspect or print the private key file.
+The command prints the public wallet address. Save that address in working notes and ask the user to fund it with ETH on `FCF_NETWORK` if it is not already funded. Never inspect or print the private key file.
 
 ## 5. Set GitHub Actions Variables
 
@@ -112,6 +131,8 @@ permissions:
   id-token: write
 ```
 
+It should use Node 24 through `actions/setup-node@v6`, map `FCF_RPC_URL` to `RPC_URL`, and map the encrypted `FCF_PRIVATE_KEY` secret to `PRIVATE_KEY`.
+
 The registration step should run:
 
 ```bash
@@ -122,18 +143,28 @@ Only run `fcf init --force` when the user agrees to replace the existing workflo
 
 ## 7. Commit And Push The Workflow
 
-If the workflow file is new or changed, stage only that file unless the user requested broader changes:
+If the workflow file is new or changed, follow the target repository's contribution and approval rules. Stage only that file unless the user requested broader changes:
 
 ```bash
 git status --short
 git add .github/workflows/fcf-register.yml
-git commit -m "Add fcf registration workflow"
+git commit
 git push
 ```
 
-If the workflow already exists on the branch that GitHub Actions will run, skip this step.
+The workflow must exist on the repository's default branch before GitHub accepts `workflow_dispatch`. If it is already present there and the desired version exists at the ref to run, skip this step.
 
-## 8. Dispatch The Registration Workflow
+## 8. Verify Wallet Funding
+
+Use the public address printed by `fcf wallet link`:
+
+```bash
+cast balance "$FCF_WALLET_ADDRESS" --ether --rpc-url "$FCF_RPC_URL"
+```
+
+If `cast` is unavailable, query the balance with another JSON-RPC client. Do not dispatch until the address has enough ETH on the selected network.
+
+## 9. Dispatch The Registration Workflow
 
 Use GitHub CLI when available:
 
@@ -141,7 +172,7 @@ Use GitHub CLI when available:
 gh workflow run fcf-register.yml -R OWNER/REPO
 ```
 
-If running on a non-default branch, include the branch ref:
+If running the version from a non-default branch after the workflow exists on the default branch, include the branch ref:
 
 ```bash
 gh workflow run fcf-register.yml -R OWNER/REPO --ref BRANCH
@@ -166,7 +197,7 @@ The successful registration log includes a line like:
 registered: 0x... status=success
 ```
 
-## 9. Verify The Mint
+## 10. Verify The Mint
 
 Get the GitHub repository database ID:
 
@@ -181,3 +212,11 @@ RPC_URL="$FCF_RPC_URL" npm exec --yes --package=@freecodexyz/cli@alpha -- fcf li
 ```
 
 If the event is older than the default list window, rerun with `--from-block <block>`.
+
+Require the workflow log to report `status=success`; a transaction hash alone is insufficient. When `cast` is available, also verify that the token exists and is owned by the linked wallet:
+
+```bash
+cast call "$FCF_CONTRACT" "ownerOf(uint256)(address)" "$REPO_ID" --rpc-url "$FCF_RPC_URL"
+```
+
+The RIK token ID is the GitHub repository database ID. Report the network, contract address, repository ID, transaction hash, receipt status, and current token owner.
