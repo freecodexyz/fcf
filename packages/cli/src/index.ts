@@ -427,7 +427,7 @@ function clients(options: ClientsOptions = {}) {
         else try { const wallet = getLocalWallet(); key = wallet.privateKey; } catch (err) { die(err) };
         return key;
     })();
-    const rpcUrl = options.rpcUrl ?? process.env.RPC_URL ?? "https://sepolia.base.org";
+    const rpcUrl = options.rpcUrl ?? process.env.RPC_URL ?? "https://mainnet.base.org";
     const chain = options.chain ?? (
         rpcUrl.includes("mainnet.base.org") ? base :
         rpcUrl.includes("sepolia") ? baseSepolia :
