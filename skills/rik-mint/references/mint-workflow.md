@@ -1,6 +1,6 @@
 # RIK Mint Workflow
 
-Use this workflow to mint a Repository Identity Key for a GitHub repository on Base Mainnet or Base Sepolia. Keep the network, RPC URL, contract address, wallet funding, and verification calls aligned.
+Use this workflow to mint a Repository Identity Key for a GitHub repository on Base Mainnet.
 
 ## 1. Confirm The Target Repository
 
@@ -28,20 +28,10 @@ Do not revert unrelated user changes.
 
 ## 2. Set Common Values
 
-Use user-provided, verified values when available. The project currently documents this Base Sepolia deployment:
+Use the current Base Mainnet deployment and a user-provided RPC URL when available:
 
 ```bash
-FCF_NETWORK=base-sepolia
 FCF_CONTRACT=0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac
-FCF_RPC_URL=https://sepolia.base.org
-FCF_CHAIN_ID=84532
-```
-
-For Base Mainnet, require the deployed RIK address instead of guessing it:
-
-```bash
-FCF_NETWORK=base-mainnet
-FCF_CONTRACT=<deployed-base-mainnet-rik-address>
 FCF_RPC_URL=https://mainnet.base.org
 FCF_CHAIN_ID=8453
 ```
@@ -94,7 +84,7 @@ Link the wallet to the repository as the encrypted `FCF_PRIVATE_KEY` GitHub Acti
 npm exec --yes --package=@freecodexyz/cli@alpha -- fcf wallet link
 ```
 
-The command prints the public wallet address. Save that address in working notes and ask the user to fund it with ETH on `FCF_NETWORK` if it is not already funded. Never inspect or print the private key file.
+The command prints the public wallet address. Save that address in working notes and ask the user to fund it with ETH on Base Mainnet if it is not already funded. Never inspect or print the private key file.
 
 ## 5. Set GitHub Actions Variables
 
@@ -162,7 +152,7 @@ Use the public address printed by `fcf wallet link`:
 cast balance "$FCF_WALLET_ADDRESS" --ether --rpc-url "$FCF_RPC_URL"
 ```
 
-If `cast` is unavailable, query the balance with another JSON-RPC client. Do not dispatch until the address has enough ETH on the selected network.
+If `cast` is unavailable, query the balance with another JSON-RPC client. Do not dispatch until the address has enough ETH on Base Mainnet.
 
 ## 9. Dispatch The Registration Workflow
 

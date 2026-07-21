@@ -1,4 +1,4 @@
 interface:
   display_name: "RIK Mint"
-  short_description: "Mint fcf Repository Identity Keys for GitHub repositories"
-  default_prompt: "Use $rik-mint to register a GitHub repository against a confirmed RIK deployment, safely link its wallet, run the OIDC workflow, and verify the mint."
+  short_description: "Mint fcf Repository Identity Keys on Base Mainnet"
+  default_prompt: "Use $rik-mint to register a GitHub repository with the current Base Mainnet RIK deployment, safely link its wallet, run the OIDC workflow, and verify the mint."

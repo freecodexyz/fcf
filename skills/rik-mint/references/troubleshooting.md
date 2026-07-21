@@ -40,7 +40,7 @@ Only use `fcf wallet create --force` after explicit user approval because it rep
 
 Symptom: the workflow fails during transaction submission or receipt wait with an insufficient-funds style error.
 
-Fix: fund the linked wallet address with ETH on the same Base network as `FCF_CONTRACT`, then rerun the `Register Repository` workflow. The wallet address is printed by `fcf wallet create` and `fcf wallet link`.
+Fix: fund the linked wallet address with ETH on Base Mainnet, then rerun the `Register Repository` workflow. The wallet address is printed by `fcf wallet create` and `fcf wallet link`.
 
 ## Workflow Cannot Request OIDC Token
 
@@ -73,7 +73,7 @@ The workflow maps `FCF_RPC_URL` into the CLI's `RPC_URL` environment variable.
 
 Symptom: contract calls return empty data, fail to decode, or cannot find the expected RIK deployment.
 
-Cause: the CLI defaults to Base Mainnet when `RPC_URL` is absent, but the address currently documented by the project is deployed on Base Sepolia.
+Cause: `FCF_RPC_URL` does not target Base Mainnet or `FCF_CONTRACT` is not the current RIK address.
 
 Fix: set both repository variables explicitly, then verify the RPC chain ID:
 
@@ -83,7 +83,7 @@ npm exec --yes --package=@freecodexyz/cli@alpha -- fcf github vars set FCF_CONTR
 npm exec --yes --package=@freecodexyz/cli@alpha -- fcf github vars set FCF_RPC_URL "$FCF_RPC_URL"
 ```
 
-Require chain ID `8453` for Base Mainnet or `84532` for Base Sepolia and confirm that `FCF_CONTRACT` is deployed on that network.
+Require chain ID `8453` and set `FCF_CONTRACT` to `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac`.
 
 ## Existing Registration Workflow
 

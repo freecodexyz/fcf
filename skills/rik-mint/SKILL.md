@@ -1,6 +1,6 @@
 ---
 name: rik-mint
-description: Mint, create, register, or verify an fcf Repository Identity Key (RIK) for a GitHub repository using @freecodexyz/cli, GitHub Actions OIDC, repository secrets and variables, and a matched RIK deployment and Base network. Use for Base Mainnet or Base Sepolia RIK onboarding, registration workflow setup, wallet linking, workflow dispatch, transaction monitoring, and registration verification.
+description: Mint, create, register, or verify an fcf Repository Identity Key (RIK) for a GitHub repository on Base Mainnet using @freecodexyz/cli, GitHub Actions OIDC, repository secrets and variables, and the current RIK deployment. Use for RIK onboarding, registration workflow setup, wallet linking, workflow dispatch, transaction monitoring, and registration verification.
 ---
 
 # RIK Mint
@@ -9,7 +9,7 @@ Use this skill to help an AI agent mint an fcf Repository Identity Key (RIK) for
 
 A RIK is minted by running the fcf registration workflow in the target repository. The workflow requests a GitHub Actions OIDC token, proves repository ownership to the RIK contract, and sends the on-chain `register` transaction from the wallet linked to that repository.
 
-The current project documents `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac` on Base Sepolia. It has a Base Mainnet deployment helper, but no Base Mainnet RIK address is currently documented. Require a confirmed deployed address before minting on Base Mainnet.
+Use the current Base Mainnet RIK deployment at `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac`.
 
 ## Core Rules
 
@@ -19,7 +19,7 @@ The current project documents `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac` on Ba
 - Do not run `fcf wallet create --force` unless the user explicitly asks to replace the local fcf wallet.
 - Do not overwrite an existing `.github/workflows/fcf-register.yml` without inspecting it first and confirming the intended behavior.
 - The actual mint should happen through GitHub Actions OIDC. Do not try to fake repository ownership or bypass JWT validation.
-- Always set `FCF_CONTRACT` and `FCF_RPC_URL` explicitly and verify they target the same network. The CLI defaults `RPC_URL` to Base Mainnet when it is absent, while its currently configured RIK address is the documented Base Sepolia deployment.
+- Set `FCF_CONTRACT` to the current RIK address and `FCF_RPC_URL` to a Base Mainnet RPC URL. Verify chain ID `8453` before dispatching the workflow.
 - For a new RIK deployment, confirm the contract owner has synced active GitHub Actions OIDC signing keys before minting. Do not run the owner-only `fcf keys sync` command unless the user explicitly authorizes it and the signing wallet is the contract owner.
 - Treat workflow dispatch as a transaction-spending action. If the user has not clearly asked to complete minting end-to-end, ask before dispatching the workflow.
 - If a required input is missing, ask one concise question instead of guessing.
@@ -27,10 +27,10 @@ The current project documents `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac` on Ba
 ## Required Inputs
 
 - Target GitHub repository as `OWNER/REPO` or a local checkout whose `origin` remote points to GitHub.
-- Target network and RIK contract address. The current documented Base Sepolia RIK is `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac`; do not infer a Base Mainnet address.
-- RPC URL for the same network as the contract. Base's public endpoints are `https://mainnet.base.org` and `https://sepolia.base.org`.
+- Base Mainnet RIK address `0xc03a52cD0EB2d5d456e64bda0557Db04608d1eac`.
+- Base Mainnet RPC URL. Base's public endpoint is `https://mainnet.base.org`.
 - GitHub credentials with permission to write repository Actions secrets, variables, and workflows.
-- A funded fcf wallet with enough ETH on the selected Base network to pay for registration gas.
+- A funded fcf wallet with enough ETH on Base Mainnet to pay for registration gas.
 - A RIK deployment provisioned with active GitHub Actions OIDC signing keys.
 
 ## Standard Workflow
@@ -43,7 +43,7 @@ For the complete command sequence, read [references/mint-workflow.md](references
 4. Verify the RPC chain ID and set matched repo variables `FCF_CONTRACT` and `FCF_RPC_URL`.
 5. Generate `.github/workflows/fcf-register.yml` with `fcf init`.
 6. Commit and push the workflow file to the default branch if it is new or changed.
-7. Ensure the linked wallet address has ETH on the selected Base network.
+7. Ensure the linked wallet address has ETH on Base Mainnet.
 8. Dispatch the `Register Repository` workflow and monitor it to completion.
 9. Capture the transaction hash, require `status=success`, and verify the repository token on-chain.
 
